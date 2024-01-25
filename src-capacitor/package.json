@@ -1,0 +1,12 @@
+{
+  "name": "jellyplayer",
+  "version": "0.0.1",
+  "description": "A music player for jellyfin",
+  "author": "FeLiZk <felizk@felizk.dk>",
+  "private": true,
+  "dependencies": {
+    "@capacitor/app": "^5.0.0",
+    "@capacitor/cli": "^5.0.0",
+    "@capacitor/core": "^5.0.0"
+  }
+}

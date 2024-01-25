@@ -1,0 +1,8 @@
+{
+  "appId": "org.jellyplayer.app",
+  "appName": "Jelly Player",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https"
+  }
+}
