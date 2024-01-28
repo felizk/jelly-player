@@ -1,5 +1,6 @@
-import { debounce } from 'quasar';
+import { LocalStorage, debounce } from 'quasar';
 import { ITimeChange, WebAudioPlayer } from 'src/plugins/audioplayer';
+import { watchEffect } from 'vue';
 
 export interface ITrackPosition {
   track: number;
@@ -25,26 +26,30 @@ export interface IAudioPlayerState {
   duration: number;
   currentTrackIndex: number;
   tracks: ITrack[];
+  hasEnded: boolean;
+  volume: number;
+  mute: boolean;
 }
 
 export interface IAudioPlayerControls {
-  loadUrl(
-    id: string,
+  loadTracks(
     tracks: ITrack[],
+    playNow?: boolean,
     startPosition?: ITrackPosition
   ): Promise<void>;
   seekRelative(seconds: number): Promise<void>;
   seekAbsolute(seconds: number): Promise<void>;
   playPause(): Promise<void>;
-  rewind_to_previous_chapter(): Promise<void>;
-  skip_to_next_chapter(): Promise<void>;
+  skip_to_previous(): Promise<void>;
+  skip_to_next(): Promise<void>;
   skip_to_track(index: number): Promise<void>;
 }
 
 export class HtmlAudioPlayer implements IAudioPlayerControls {
   constructor(
     public state: IAudioPlayerState,
-    private innerPlayer: WebAudioPlayer
+    private innerPlayer: WebAudioPlayer,
+    private skipPreviousRewindThreshold: number
   ) {
     this.debouncedSeek = debounce((s) => this.innerSeekTo(s), 200);
 
@@ -56,6 +61,7 @@ export class HtmlAudioPlayer implements IAudioPlayerControls {
     void innerPlayer.addListener('onPlay', () => {
       this.state.isPlaying = true;
       this.state.isBusy = false;
+      this.state.hasEnded = false;
     });
     void innerPlayer.addListener('timeUpdate', (change) =>
       this.timeUpdate(change as ITimeChange)
@@ -66,24 +72,43 @@ export class HtmlAudioPlayer implements IAudioPlayerControls {
     );
     void innerPlayer.addListener(
       'onTrackChanged',
-      (event: { index: number }) => {
+      (event: { index: number; ended: boolean }) => {
+        if (event.ended) {
+          this.state.hasEnded = true;
+        }
         this.state.currentTrackIndex = event.index;
       }
     );
+
+    void innerPlayer.addListener('onLoaded', () => {
+      this.innerPlayer.setVolume(state.mute ? 0 : state.volume / 100.0);
+    });
+
+    state.volume = LocalStorage.getItem('playerVolume') ?? 100;
+    state.mute = LocalStorage.getItem('playerMuted') ?? false;
+
+    watchEffect(() => {
+      this.innerPlayer.setVolume(state.mute ? 0 : state.volume / 100.0);
+      LocalStorage.set('playerVolume', state.volume);
+      LocalStorage.set('playerMuted', state.mute);
+    });
   }
 
-  loadUrl(
-    id: string,
+  loadTracks(
     tracks: ITrack[],
+    playNow?: boolean,
     startPosition?: ITrackPosition
   ): Promise<void> {
     this.state.tracks = tracks;
-    this.state.currentTrackIndex = startPosition?.track ?? 0;
-    return this.innerPlayer.loadUrl({
-      id: id,
-      tracks: tracks,
-      startPosition: startPosition,
-    });
+    this.state.currentTrackIndex = startPosition?.track ?? -1;
+    this.innerPlayer.setTracks(tracks, this.state.currentTrackIndex);
+
+    if (playNow) {
+      return this.innerPlayer.skip_to_track({
+        index: this.state.currentTrackIndex,
+      });
+    }
+    return Promise.resolve();
   }
 
   seekRelative(seconds: number): Promise<void> {
@@ -104,12 +129,16 @@ export class HtmlAudioPlayer implements IAudioPlayerControls {
     return this.innerPlayer.playPause();
   }
 
-  async skip_to_next_chapter(): Promise<void> {
-    await this.innerPlayer.skip_to_next_chapter();
+  async skip_to_next(): Promise<void> {
+    await this.innerPlayer.skip_to_next();
   }
 
-  async rewind_to_previous_chapter() {
-    await this.innerPlayer.rewind_to_previous_chapter();
+  async skip_to_previous() {
+    if (this.state.position >= this.skipPreviousRewindThreshold) {
+      return this.seekAbsolute(0);
+    }
+
+    await this.innerPlayer.skip_to_previous();
   }
 
   skip_to_track(index: number): Promise<void> {

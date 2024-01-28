@@ -3,6 +3,11 @@ export interface IArtistItem {
   Id: string;
 }
 
+export interface IItemUserData {
+  IsFavorite: boolean;
+  Likes: boolean;
+}
+
 export interface IBaseItem {
   Id: string;
   Name: string;
@@ -14,6 +19,7 @@ export interface IBaseItem {
   MediaType: string;
   Type: string;
   ArtistItems: IArtistItem[];
+  UserData: IItemUserData;
 }
 
 export interface ISong {
@@ -25,6 +31,8 @@ export interface ISong {
   artistId: string;
   url: string;
   thumbnailUrl: string;
+  isFavorite: boolean;
+  isLiked: boolean;
 }
 
 export function songFromItem(
@@ -51,5 +59,7 @@ export function songFromItem(
     artistId: item.ArtistItems[0].Id,
     url: `${baseUrl}/Audio/${item.Id}/universal?ApiKey=${apiToken}`,
     thumbnailUrl: `${baseUrl}/Items/${imageItem}/Images/Primary?ApiKey=${apiToken}`,
+    isFavorite: item.UserData.IsFavorite,
+    isLiked: item.UserData.Likes,
   };
 }

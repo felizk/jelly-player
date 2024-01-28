@@ -1,97 +1,123 @@
 <template>
   <q-page class="row items-center justify-evenly">
-    <example-component
-      title="Example component"
-      active
-      :todos="todos"
-      :meta="meta"
-    ></example-component>
-    <q-btn @click="play">test</q-btn>
+    <div>
+      <div class="row items-center justify-evenly">
+        <q-input v-model="quickSearchText" label="Standard" />
+      </div>
+      <div class="row items-center justify-evenly">
+        <q-list>
+          <q-item-label header>Upcoming</q-item-label>
+          <q-separator />
+          <q-item
+            v-for="(song, index) in bookPlayer.playlist.value"
+            :key="index"
+            clickable
+            :active="bookPlayer.state.value.currentTrackIndex == index"
+            active-class="my-menu-link"
+            @click="playSong(index)"
+          >
+            <q-item-section top avatar class="q-ml-none">
+              <q-avatar size="50px" rounded>
+                <img :src="song.thumbnailUrl" />
+              </q-avatar>
+            </q-item-section>
+
+            <q-item-section>
+              <q-item-label>{{ song.title }}</q-item-label>
+              <q-item-label caption lines="1">
+                {{ song.artist }} - {{ song.album }}
+              </q-item-label>
+            </q-item-section>
+            <q-item-section side>
+              <div class="row">
+                <q-btn
+                  color="primary"
+                  flat
+                  dense
+                  round
+                  :icon="song.isFavorite ? 'favorite' : 'favorite_border'"
+                  @click.stop="songLibrary.favorite(song)"
+                />
+                <!--
+                <q-btn
+                  color="primary"
+                  flat
+                  dense
+                  round
+                  :icon="song.isLiked ? 'thumb_up_alt' : 'thumb_up_off_alt'"
+                  @click.stop="onLiked(song)"
+                /> -->
+              </div>
+            </q-item-section>
+          </q-item>
+        </q-list>
+      </div>
+    </div>
+
+    <q-page-sticky position="bottom-right" :offset="[18, 18]">
+      <q-btn
+        fab
+        icon="casino"
+        color="primary"
+        @click="bookPlayer.rerollSongs(true)"
+      />
+    </q-page-sticky>
   </q-page>
 </template>
 
 <script setup lang="ts">
-import { Todo, Meta } from 'components/models';
-import ExampleComponent from 'components/ExampleComponent.vue';
-import { inject, ref } from 'vue';
-import { api } from 'boot/axios';
 import { injectBookPlayer } from 'src/models/bookplayer';
-import { IBaseItem, songFromItem } from 'src/models/jellyitem';
+import { ISong } from 'src/models/jellyitem';
+import { useSongLibrary } from 'src/stores/songlibrary';
+import { ref, watch } from 'vue';
+import fuzzysort from 'fuzzysort';
 
-const todos = ref<Todo[]>([
-  {
-    id: 1,
-    content: 'ct1',
-  },
-  {
-    id: 2,
-    content: 'ct2',
-  },
-  {
-    id: 3,
-    content: 'ct3',
-  },
-  {
-    id: 4,
-    content: 'ct4',
-  },
-  {
-    id: 5,
-    content: 'ct5',
-  },
-]);
-const meta = ref<Meta>({
-  totalCount: 1200,
-});
 let bookPlayer = injectBookPlayer();
+let songLibrary = useSongLibrary();
 
-async function test() {
-  let response = await api.post(
-    '/Users/AuthenticateByName',
-    {
-      Username: 'felizk',
-      Pw: '',
-    },
-    {
-      headers: {
-        'X-Emby-Authorization':
-          'MediaBrowser Client="JellyPlayer", Device="JellyPlayer", DeviceId="JellyPlayer", Version="0.2", Token=""',
-      },
+const quickSearchText = ref<string>('');
+
+watch(quickSearchText, (text) => {
+  if (text) {
+    const results = fuzzysort.go(text, songLibrary.songs, {
+      keys: ['title', 'album', 'artist'],
+      limit: 5,
+    });
+    songLibrary.nextSongs = results.map((x) => x.obj);
+  } else {
+    songLibrary.nextSongs = [];
+  }
+});
+
+async function play() {
+  // let items = songLibrary.songs;
+
+  const newSongs: ISong[] = [];
+
+  for (let i = 0; i < 20; i++) {
+    const next = await songLibrary.getRandomSong();
+    if (next) {
+      newSongs.push(next);
     }
-  );
-  console.log(response);
+  }
 
-  let userId = response.data.User.Id;
-  let token = response.data['AccessToken'];
-  api.defaults.headers.common[
-    'X-Emby-Authorization'
-  ] = `MediaBrowser Client="JellyPlayer", Device="JellyPlayer", DeviceId="JellyPlayer", Version="0.1", Token="${token}"`;
+  bookPlayer.updatePlaylist(newSongs, true);
 
-  let itemsResponse = await api.get(`/Users/${userId}/Items`, {
-    params: {
-      IncludeItemTypes: 'Audio',
-      recursive: true,
-    },
-  });
+  // songLibrary.nextSongs = newSongs;
+  // let idx = (Math.random() * items.length) | 0;
+  // let item = items[idx];
 
-  let items = itemsResponse.data.Items as IBaseItem[];
-  let idx = (Math.random() * items.length) | 0;
-  let item = items[idx];
-
-  let song = songFromItem(item, api.getUri(), token);
-
-  bookPlayer.loadSong(song);
-
-  // audioPlayer.value.src =
-  //     api.getUri() +
-  //     `/Audio/${items.data.Items[idx].Id}/universal?ApiKey=${token}`;
-
-  //let response = await api.get('/Users/Public');
+  //bookPlayer.loadSong(item);
 }
 
-function play() {
-  test();
-
-  //audioPlayer.value?.play();
+function playSong(songIndex: number) {
+  bookPlayer.player.skip_to_track(songIndex);
 }
 </script>
+
+<style lang="sass">
+.my-menu-link
+  background: $light-blue-1
+.test
+  display: none
+</style>

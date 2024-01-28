@@ -3,7 +3,7 @@
     <div v-if="small" class="row no-wrap items-center q-pt-xs">
       <div class="col-auto q-px-sm">
         <q-avatar rounded size="70px">
-          <img :src="bookPlayer.thumbnail.value" />
+          <img :src="bookPlayer.currentSong.value?.thumbnailUrl" />
         </q-avatar>
         <!-- <img height="75" :src="bookPlayer.thumbnail.value" /> -->
       </div>
@@ -22,18 +22,50 @@
         </div>
 
         <div class="row justify-between items-start">
-          <q-list class="full-width" v-if="bookPlayer.song.value">
+          <q-list class="full-width" v-if="bookPlayer.currentSong.value">
             <q-item class="q-pt-none q-pl-sm">
               <q-item-section class="text-white">
-                <q-item-label>{{ bookPlayer.song.value.title }}</q-item-label>
+                <q-item-label>{{
+                  bookPlayer.currentSong.value.title
+                }}</q-item-label>
                 <q-item-label caption lines="1" class="text-white"
-                  >{{ bookPlayer.song.value.artist }} -
-                  {{ bookPlayer.song.value.album }}</q-item-label
+                  >{{ bookPlayer.currentSong.value.artist }} -
+                  {{ bookPlayer.currentSong.value.album }}</q-item-label
                 >
               </q-item-section>
               <q-item-section side>
                 <div class="row no-wrap items-center">
-                  <q-btn
+                  <div
+                    class="row no-wrap items-center"
+                    style="background-color: primary"
+                  >
+                    <q-slider
+                      :min="0"
+                      :max="100"
+                      style="min-width: 100px"
+                      thumb-size="5px"
+                      color="light-blue-6"
+                      v-model="bookPlayer.state.value.volume"
+                    />
+                    <q-btn
+                      v-ripple.stop
+                      flat
+                      round
+                      color="white"
+                      class="q-mx-xs"
+                      :icon="
+                        bookPlayer.state.value.volume > 0 &&
+                        !bookPlayer.state.value.mute
+                          ? 'volume_up'
+                          : 'volume_off'
+                      "
+                      @click.stop.prevent="
+                        bookPlayer.state.value.mute =
+                          !bookPlayer.state.value.mute
+                      "
+                    />
+                  </div>
+                  <!-- <q-btn
                     v-ripple.stop
                     round
                     color="light-blue-10"
@@ -41,11 +73,23 @@
                     icon="replay_30"
                     @click.stop.prevent="bookPlayer.player.seekRelative(-30)"
                     :disable="bookPlayer.state.value.isBusy"
+                  /> -->
+                  <q-btn
+                    v-ripple.stop
+                    flat
+                    round
+                    color="white"
+                    class="q-mx-xs"
+                    :disable="bookPlayer.state.value.isBusy"
+                    icon="skip_previous"
+                    :loading="bookPlayer.state.value.isBusy"
+                    @click.stop.prevent="bookPlayer.player.skip_to_previous()"
                   />
                   <q-btn
                     v-ripple.stop
+                    flat
                     round
-                    color="light-blue-10"
+                    color="white"
                     class="q-mx-xs"
                     :disable="bookPlayer.state.value.isBusy"
                     :icon="
@@ -53,6 +97,17 @@
                     "
                     :loading="bookPlayer.state.value.isBusy"
                     @click.stop.prevent="bookPlayer.player.playPause()"
+                  />
+                  <q-btn
+                    v-ripple.stop
+                    flat
+                    round
+                    color="white"
+                    class="q-mx-xs"
+                    :disable="bookPlayer.state.value.isBusy"
+                    icon="skip_next"
+                    :loading="bookPlayer.state.value.isBusy"
+                    @click.stop.prevent="bookPlayer.player.skip_to_next()"
                   />
                 </div>
               </q-item-section>
@@ -65,10 +120,10 @@
       <div
         style="text-align: center"
         class="q-mt-md"
-        v-if="bookPlayer.song.value"
+        v-if="bookPlayer.currentSong.value"
       >
         <div style="font-size: 1.5em">
-          {{ bookPlayer.song.value.title }}
+          {{ bookPlayer.currentSong.value.title }}
         </div>
         <div style="font-size: 1.2em">{{ '' }}&nbsp;</div>
       </div>
@@ -97,7 +152,7 @@
           class="q-mx-xs"
           icon="skip_previous"
           :disable="bookPlayer.state.value.isBusy"
-          @click="bookPlayer.player.rewind_to_previous_chapter()"
+          @click="bookPlayer.player.skip_to_previous()"
         />
         <q-btn
           round
@@ -116,7 +171,7 @@
           class="q-mx-xs"
           icon="skip_next"
           :disable="bookPlayer.state.value.isBusy"
-          @click="bookPlayer.player.skip_to_next_chapter()"
+          @click="bookPlayer.player.skip_to_next()"
         />
       </div>
     </div>
@@ -131,7 +186,6 @@ import { toTime } from 'src/models/helper';
 function useAudioPlayerSlider() {
   const sliderStart = ref(0);
   const sliderEnd = ref(0);
-
   const bookPlayer = injectBookPlayer();
 
   watch(

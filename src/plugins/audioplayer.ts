@@ -12,20 +12,25 @@ export class WebAudioPlayer extends WebPlugin {
     super();
   }
 
-  loadUrl(request: {
-    id: string;
-    tracks: ITrack[];
-    startPosition?: ITrackPosition;
-  }): Promise<void> {
-    if (this.playerElement) {
-      this.tracks = request.tracks;
-      this.startTrack(request.startPosition?.track ?? 0);
-      this.startSeek = request.startPosition?.position ?? 0;
-      //this.currentSession = DatabaseInstance.makeSession(request.id, this.startSeek + this.currentTrackStart());
-    }
-
-    return Promise.resolve();
+  setTracks(tracks: ITrack[], currentTrack: number) {
+    this.tracks = tracks;
+    this.index = currentTrack;
   }
+
+  // loadUrl(request: {
+  //   id: string;
+  //   tracks: ITrack[];
+  //   startPosition?: ITrackPosition;
+  // }): Promise<void> {
+  //   if (this.playerElement) {
+  //     this.tracks = request.tracks;
+  //     this.startTrack(request.startPosition?.track ?? 0);
+  //     this.startSeek = request.startPosition?.position ?? 0;
+  //     //this.currentSession = DatabaseInstance.makeSession(request.id, this.startSeek + this.currentTrackStart());
+  //   }
+
+  //   return Promise.resolve();
+  // }
 
   seekAbsolute(request: { seconds: number }): Promise<void> {
     if (this.playerElement) {
@@ -38,6 +43,12 @@ export class WebAudioPlayer extends WebPlugin {
     return Promise.resolve();
   }
 
+  setVolume(volume: number) {
+    if (!this.playerElement) return;
+
+    this.playerElement.volume = volume;
+  }
+
   async playPause(): Promise<void> {
     if (!this.playerElement) return;
 
@@ -48,13 +59,17 @@ export class WebAudioPlayer extends WebPlugin {
     }
   }
 
-  rewind_to_previous_chapter(): Promise<void> {
+  skip_to_previous(): Promise<void> {
     this.startTrack(this.index - 1);
     return Promise.resolve();
   }
 
-  skip_to_next_chapter(): Promise<void> {
-    this.startTrack(this.index + 1);
+  skip_to_next(): Promise<void> {
+    if (this.index === this.tracks.length - 1) {
+      this.notifyListeners('onTrackChanged', { index: -1, ended: true });
+    } else {
+      this.startTrack(this.index + 1);
+    }
     return Promise.resolve();
   }
 
@@ -95,7 +110,16 @@ export class WebAudioPlayer extends WebPlugin {
       this.notifyListeners('onCanPlay', null);
     };
 
+    playerElement.onended = () => {
+      if (this.index === this.tracks.length - 1) {
+        this.notifyListeners('onTrackChanged', { index: -1, ended: true });
+      } else {
+        this.startTrack(this.index + 1);
+      }
+    };
+
     this.playerElement = playerElement;
+    this.notifyListeners('onLoaded', null);
   }
 
   loadLatestPosition(request: { id: string }): Promise<ITrackPosition> {
