@@ -24,7 +24,7 @@
               rounded
               size="75px"
               icon="person"
-              color="teal"
+              color="primary"
               text-color="white"
             />
           </q-btn>
@@ -69,8 +69,6 @@ import { useAuthStore } from 'src/stores/authStore';
 import { useSongLibrary } from 'src/stores/songlibrary';
 import { ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
-
-// TODO: Clean up, add spinner, add logout
 
 const router = useRouter();
 const bookPlayer = injectBookPlayer();
