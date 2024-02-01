@@ -44,7 +44,7 @@
                       :max="100"
                       style="min-width: 100px"
                       thumb-size="5px"
-                      color="light-blue-6"
+                      color="secondary"
                       v-model="bookPlayer.state.value.volume"
                     />
                     <q-btn

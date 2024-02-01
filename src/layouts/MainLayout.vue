@@ -186,5 +186,5 @@ function signOut() {
 
 <style lang="sass">
 .my-menu-link
-  background: $light-blue-1
+  background: $light-blue-2
 </style>
