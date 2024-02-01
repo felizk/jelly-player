@@ -1,6 +1,9 @@
 <template>
   <div class="fullscreen text-center q-pa-md flex flex-center">
-    <div>
+    <div v-if="isBusy">
+      <q-spinner-ios color="primary" size="10em" />
+    </div>
+    <div v-else>
       <h3>Jelly Player</h3>
       <q-form @submit="onConnect" class="q-gutter-md q-my-lg">
         <q-input filled v-model="server" label="Server" />
@@ -55,7 +58,6 @@
 </template>
 
 <script setup lang="ts">
-import { LocalStorage } from 'quasar';
 import { injectBookPlayer } from 'src/models/bookplayer';
 import {
   JellyfinAPI,
@@ -65,7 +67,7 @@ import {
 import { IUser } from 'src/models/jellyitem';
 import { useAuthStore } from 'src/stores/authStore';
 import { useSongLibrary } from 'src/stores/songlibrary';
-import { provide, ref, watch } from 'vue';
+import { ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 
 // TODO: Clean up, add spinner, add logout
@@ -82,7 +84,7 @@ const token = ref(auth.token);
 const connected = ref(false);
 const connectError = ref(false);
 const pwField = ref<HTMLInputElement | undefined>();
-
+const isBusy = ref(!!server.value && !!token.value);
 let connection: JellyfinConnection | undefined;
 
 watch(server, () => {
@@ -102,43 +104,49 @@ function selectUser(selectedUser: IUser) {
 }
 
 async function onConnect() {
-  // sanitize the ip
-  if (!URL.canParse(server.value)) {
-    const httpVersion = `http://${server.value}`;
-    if (URL.canParse(httpVersion)) {
-      server.value = httpVersion;
+  try {
+    isBusy.value = true;
+
+    // sanitize the ip
+    if (!URL.canParse(server.value)) {
+      const httpVersion = `http://${server.value}`;
+      if (URL.canParse(httpVersion)) {
+        server.value = httpVersion;
+      }
     }
-  }
 
-  const url = new URL(server.value);
-  if (!url.port) {
-    url.port = '8096';
-    server.value = url.toString();
-  }
-
-  while (server.value.endsWith('/')) {
-    server.value = server.value.substring(0, server.value.length - 1);
-  }
-
-  connection = new JellyfinConnection(
-    'JellyPlayer',
-    'MyDevice',
-    'MyId',
-    '0.0.1',
-    server.value
-  );
-
-  if (token.value) {
-    const reloginApi = await connection.authenticateWithToken(token.value);
-    if (reloginApi) {
-      JellyfinAPI.instance = reloginApi;
-      navigate();
+    const url = new URL(server.value);
+    if (!url.port) {
+      url.port = '8096';
+      server.value = url.toString();
     }
-  }
 
-  users.value = await connection.getUsers();
-  connected.value = true;
-  auth.server = server.value;
+    while (server.value.endsWith('/')) {
+      server.value = server.value.substring(0, server.value.length - 1);
+    }
+
+    connection = new JellyfinConnection(
+      'JellyPlayer',
+      'MyDevice',
+      'MyId',
+      '0.0.1',
+      server.value
+    );
+
+    if (token.value) {
+      const reloginApi = await connection.authenticateWithToken(token.value);
+      if (reloginApi) {
+        JellyfinAPI.instance = reloginApi;
+        await navigate();
+      }
+    }
+
+    users.value = await connection.getUsers();
+    connected.value = true;
+    auth.server = server.value;
+  } finally {
+    isBusy.value = false;
+  }
 }
 
 async function onSubmit() {
@@ -146,9 +154,14 @@ async function onSubmit() {
 }
 
 async function login() {
-  if (!connection) return;
-  JellyfinAPI.instance = await connection.authenticate(user.value, pw.value);
-  navigate();
+  try {
+    isBusy.value = true;
+    if (!connection) return;
+    JellyfinAPI.instance = await connection.authenticate(user.value, pw.value);
+    await navigate();
+  } finally {
+    isBusy.value = false;
+  }
 }
 
 async function navigate() {
