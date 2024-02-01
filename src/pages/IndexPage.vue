@@ -51,28 +51,10 @@
 
 <script setup lang="ts">
 import { injectBookPlayer } from 'src/models/bookplayer';
-import { useSongLibrary } from 'src/stores/songlibrary';
-import { ref, watch } from 'vue';
 import { JellyfinAPI, JellyfinMusic } from 'src/models/jellyfin';
-import fuzzysort from 'fuzzysort';
 
 let bookPlayer = injectBookPlayer();
-let songLibrary = useSongLibrary();
 const api = JellyfinAPI.instance;
-
-const quickSearchText = ref<string>('');
-
-watch(quickSearchText, (text) => {
-  if (text) {
-    const results = fuzzysort.go(text, songLibrary.songs, {
-      keys: ['title', 'album', 'artist'],
-      limit: 5,
-    });
-    songLibrary.nextSongs = results.map((x) => x.obj);
-  } else {
-    songLibrary.nextSongs = [];
-  }
-});
 
 function playSong(songIndex: number) {
   bookPlayer.player.skip_to_track(songIndex);

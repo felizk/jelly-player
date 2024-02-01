@@ -169,7 +169,7 @@ async function navigate() {
   const lib = useSongLibrary();
   lib.setSongs(await JellyfinMusic.getAllSongs(JellyfinAPI.instance));
   void bookPlayer.rerollSongs();
-  router.push('/');
+  await router.push('/');
 }
 
 if (server.value) {

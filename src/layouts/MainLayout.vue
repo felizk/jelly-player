@@ -27,6 +27,29 @@
                   />
                 </q-item-section>
               </q-item>
+
+              <q-item>
+                <q-item-section side>
+                  <q-icon color="deep-orange" name="library_music" />
+                </q-item-section>
+
+                <q-item-section>
+                  <q-slider
+                    class="q-pr-sm"
+                    :model-value="settings.listLength"
+                    :min="5"
+                    :max="50"
+                    :step="1"
+                    @change="
+                      (val) => {
+                        settings.listLength = val;
+                      }
+                    "
+                    label
+                    color="deep-orange"
+                  />
+                </q-item-section>
+              </q-item>
               <q-separator />
               <q-item clickable v-close-popup @click="signOut">
                 <q-item-section>Sign out</q-item-section>

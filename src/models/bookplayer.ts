@@ -10,6 +10,7 @@ import {
 import { AudioPlayerPlugin, setHtmlAudioPlayer } from 'src/plugins/audioplayer';
 import { ISong } from './jellyitem';
 import { useSongLibrary } from 'src/stores/songlibrary';
+import { useSettings } from 'src/stores/settingsStore';
 
 export interface IBookPlayer {
   state: Ref<IAudioPlayerState>;
@@ -43,6 +44,7 @@ export function setupBookPlayer(htmlPlayer: Ref<HTMLAudioElement | null>) {
 
   const currentSong = shallowRef<ISong>();
   const playlist = ref<ISong[]>([]);
+  const settings = useSettings();
 
   // This exists because it takes a while for the htmlPlayer to be populated by the site.
   const stopWatchingHtmlPlayer = watchEffect(() => {
@@ -129,7 +131,7 @@ export function setupBookPlayer(htmlPlayer: Ref<HTMLAudioElement | null>) {
       newSongs.push(firstSong);
     }
 
-    for (let i = 0; newSongs.length < 10; i++) {
+    for (let i = 0; newSongs.length < settings.listLength; i++) {
       const next = await songLibrary.getRandomSong();
       if (next) {
         newSongs.push(next);
