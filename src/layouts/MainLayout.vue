@@ -4,7 +4,30 @@
       <q-toolbar>
         <q-btn flat round dense icon="menu" class="q-mr-sm">
           <q-menu>
-            <q-list style="min-width: 100px">
+            <q-list style="min-width: 200px">
+              <q-item-label header>Favorite Ratio</q-item-label>
+              <q-item>
+                <q-item-section side>
+                  <q-icon color="deep-orange" name="favorite" />
+                </q-item-section>
+                <q-item-section>
+                  <q-slider
+                    class="q-pr-sm"
+                    :model-value="settings.favoriteRatio"
+                    :min="5"
+                    :max="95"
+                    :step="5"
+                    @change="
+                      (val) => {
+                        settings.favoriteRatio = val;
+                      }
+                    "
+                    label
+                    color="deep-orange"
+                  />
+                </q-item-section>
+              </q-item>
+              <q-separator />
               <q-item clickable v-close-popup @click="signOut">
                 <q-item-section>Sign out</q-item-section>
               </q-item>
@@ -107,7 +130,9 @@ import { ISong } from 'src/models/jellyitem';
 import { JellyfinAPI, JellyfinMusic } from 'src/models/jellyfin';
 import { useAuthStore } from 'src/stores/authStore';
 import { useRouter } from 'vue-router';
+import { useSettings } from 'src/stores/settingsStore';
 
+const settings = useSettings();
 let bookPlayer = injectBookPlayer();
 let songLibrary = useSongLibrary();
 const api = JellyfinAPI.instance;

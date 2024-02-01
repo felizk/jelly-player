@@ -129,7 +129,7 @@ export function setupBookPlayer(htmlPlayer: Ref<HTMLAudioElement | null>) {
       newSongs.push(firstSong);
     }
 
-    for (let i = 0; newSongs.length < 20; i++) {
+    for (let i = 0; newSongs.length < 10; i++) {
       const next = await songLibrary.getRandomSong();
       if (next) {
         newSongs.push(next);
