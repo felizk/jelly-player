@@ -1,61 +1,111 @@
-import { InjectionKey } from 'vue';
-import { IBaseItem, ISong, songFromItem } from './jellyitem';
-import { AxiosInstance } from 'axios';
-import { injectStrict } from 'src/compositionHelpers';
+import { IBaseItem, ISong, IUser, songFromItem } from './jellyitem';
+import axios, { AxiosInstance } from 'axios';
 
-export class JellyfinAPI {
+export class JellyfinConnection {
   constructor(
-    public api: AxiosInstance,
     private clientName: string,
     private deviceName: string,
     private deviceId: string,
     private version: string,
-    private username: string,
-    private pw: string
+    private baseUrl: string
   ) {}
 
-  async authenticate() {
-    try {
-      const response = await this.api.post(
-        '/Users/AuthenticateByName',
-        {
-          Username: this.username,
-          Pw: this.pw,
+  async getUsers() {
+    const api = axios.create({ baseURL: this.baseUrl });
+
+    const response = await api.get('/Users/Public', {
+      headers: {
+        Authorization: this.makeAuthString(''),
+      },
+    });
+    return response.data as IUser[];
+  }
+
+  async authenticate(username: string, pw: string) {
+    const api = axios.create({ baseURL: this.baseUrl });
+    let token = '';
+
+    const response = await api.post(
+      '/Users/AuthenticateByName',
+      {
+        Username: username,
+        Pw: pw,
+      },
+      {
+        headers: {
+          Authorization: this.makeAuthString(''),
         },
-        {
-          headers: {
-            Authorization: this.makeAuthString(),
-          },
-        }
-      );
+      }
+    );
 
-      this.userId = response.data?.User?.Id;
-      this.token = response.data['AccessToken'];
-      this.api.defaults.headers.common['Authorization'] = this.makeAuthString();
-      return true;
+    const userId = response.data?.User?.Id;
+    token = response.data['AccessToken'];
+    api.defaults.headers.common['Authorization'] = this.makeAuthString(token);
+    return new JellyfinAPI(api, userId, token);
+  }
+
+  async authenticateWithToken(token: string) {
+    const api = axios.create({ baseURL: this.baseUrl });
+
+    try {
+      const response = await api.get('/Users/Me', {
+        headers: {
+          Authorization: this.makeAuthString(token),
+        },
+      });
+
+      const userId = response.data?.Id;
+      api.defaults.headers.common['Authorization'] = this.makeAuthString(token);
+      return new JellyfinAPI(api, userId, token);
     } catch {}
-    return false;
+
+    return undefined;
   }
 
-  getUserId() {
-    return this.userId;
+  private makeAuthString(token: string) {
+    return `MediaBrowser Client="${this.clientName}", Device="${this.deviceName}", DeviceId="${this.deviceId}", Version="${this.version}", Token="${token}"`;
+  }
+}
+
+export class JellyfinAPI {
+  public constructor(
+    private _api: AxiosInstance,
+    private _userId: string,
+    private _token: string
+  ) {}
+
+  static get instance() {
+    return this._instance;
   }
 
-  isAuthenticated() {
+  static set instance(val) {
+    this._instance = val;
+  }
+
+  get userId() {
+    return this._userId;
+  }
+
+  get token() {
+    return this._token;
+  }
+
+  get axios() {
+    return this._api;
+  }
+
+  get isAuthenticated() {
     return !!this.token;
   }
 
-  private makeAuthString() {
-    return `MediaBrowser Client="${this.clientName}", Device="${this.deviceName}", DeviceId="${this.deviceId}", Version="${this.version}", Token="${this.token}"`;
-  }
-
-  protected token = '';
-  protected userId = '';
+  private static _instance: JellyfinAPI | undefined;
 }
 
-export class JellyfinMusic extends JellyfinAPI {
-  async getAllSongs() {
-    const itemsResponse = await this.api.get(`/Users/${this.userId}/Items`, {
+export class JellyfinMusic {
+  static async getAllSongs(api: JellyfinAPI | undefined) {
+    if (!api) return [];
+
+    const itemsResponse = await api.axios.get(`/Users/${api.userId}/Items`, {
       params: {
         IncludeItemTypes: 'Audio',
         recursive: true,
@@ -63,38 +113,47 @@ export class JellyfinMusic extends JellyfinAPI {
     });
 
     const items = itemsResponse.data.Items as IBaseItem[];
-    return items.map((x) => songFromItem(x, this.api.getUri(), this.token));
+    return items.map((x) => songFromItem(x, api.axios.getUri(), api.token));
   }
 
-  async setFavorited(song: ISong, shouldBeFavorite: boolean) {
+  static async setFavorited(
+    api: JellyfinAPI | undefined,
+    song: ISong,
+    shouldBeFavorite: boolean
+  ) {
+    if (!api) return;
+
     if (shouldBeFavorite) {
-      await this.api.post(`/Users/${this.userId}/FavoriteItems/${song.id}`);
+      await api.axios.post(`/Users/${api.userId}/FavoriteItems/${song.id}`);
+      song.isFavorite = true;
     } else {
-      await this.api.delete(`/Users/${this.userId}/FavoriteItems/${song.id}`);
+      await api.axios.delete(`/Users/${api.userId}/FavoriteItems/${song.id}`);
+      song.isFavorite = false;
     }
   }
 
-  async setLiked(song: ISong, shouldBeLiked: boolean) {
-    await this.api.post(
-      `/Users/${this.userId}/Items/${song.id}/Rating?likes=${shouldBeLiked}`
+  static async setLiked(
+    api: JellyfinAPI | undefined,
+    song: ISong,
+    shouldBeLiked: boolean
+  ) {
+    if (!api) return;
+
+    await api.axios.post(
+      `/Users/${api.userId}/Items/${song.id}/Rating?likes=${shouldBeLiked}`
     );
+    song.isLiked = shouldBeLiked;
   }
 
-  async markPlayed(song: ISong) {
+  static async markPlayed(api: JellyfinAPI | undefined, song: ISong) {
+    if (!api) return;
     const currentDate = new Date();
 
     // Format the date in ISO 8601 format
     const isoDateTime = currentDate.toISOString();
 
-    await this.api.post(
-      `/Users/${this.userId}/PlayedItems/${song.id}?datePlayed=${isoDateTime}`
+    await api.axios.post(
+      `/Users/${api.userId}/PlayedItems/${song.id}?datePlayed=${isoDateTime}`
     );
   }
-}
-
-export const JellyfinMusicKey: InjectionKey<JellyfinMusic> =
-  Symbol('JellyfinMusicKey');
-
-export function injectJellyfinMusic() {
-  return injectStrict(JellyfinMusicKey);
 }

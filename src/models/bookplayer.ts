@@ -1,12 +1,4 @@
-import {
-  InjectionKey,
-  provide,
-  ref,
-  Ref,
-  shallowRef,
-  watch,
-  watchEffect,
-} from 'vue';
+import { InjectionKey, provide, ref, Ref, shallowRef, watchEffect } from 'vue';
 
 import { injectStrict } from 'src/compositionHelpers';
 import {
@@ -25,7 +17,7 @@ export interface IBookPlayer {
   currentSong: Ref<ISong | undefined>;
   playlist: Ref<ISong[]>;
   updatePlaylist(newSongs: ISong[], tryKeepCurrent: boolean): void;
-  rerollSongs(keepCurrent: boolean): Promise<void>;
+  rerollSongs(firstSong?: ISong): Promise<void>;
 }
 
 const BookPlayerKey: InjectionKey<IBookPlayer> = Symbol('BookPlayerKey');
@@ -50,7 +42,6 @@ export function setupBookPlayer(htmlPlayer: Ref<HTMLAudioElement | null>) {
   const player = new HtmlAudioPlayer(state.value, AudioPlayerPlugin, 5);
 
   const currentSong = shallowRef<ISong>();
-  const thumbnail = ref<string>();
   const playlist = ref<ISong[]>([]);
 
   // This exists because it takes a while for the htmlPlayer to be populated by the site.
@@ -61,9 +52,10 @@ export function setupBookPlayer(htmlPlayer: Ref<HTMLAudioElement | null>) {
     }
   });
 
-  watchEffect(() => {
+  watchEffect(async () => {
     if (state.value.hasEnded) {
-      rerollSongs(false);
+      await rerollSongs();
+      player.skip_to_track(0);
     } else {
       if (state.value.currentTrackIndex < 0) {
         currentSong.value = undefined;
@@ -87,37 +79,7 @@ export function setupBookPlayer(htmlPlayer: Ref<HTMLAudioElement | null>) {
     }
   });
 
-  // watchEffect(() => {
-  //   player.setVolume(state.volume);
-  // });
-
-  //let seekingWithoutUndo = false;
-
-  // watch(
-  //   () => state.value.position,
-  //   (newValue, oldValue) => {
-  //     if(oldValue != 0 && Math.abs(newValue - oldValue) > 60) {
-  //       if(!seekingWithoutUndo) {
-  //         sessionState.value.longSeekHistory.push({ track: state.value.currentTrackIndex, position: oldValue });
-  //         sessionState.value.lastLongSeekTime = Date.now();
-  //       }
-  //     }
-
-  //     if(sessionState.value.longSeekHistory.length > 0 && (Date.now() - sessionState.value.lastLongSeekTime) > 15000) {
-  //       sessionState.value.longSeekHistory = [];
-  //     }
-  //    }
-  // );
-
-  // TODO: FIX UNDO
-
   async function updatePlaylist(newSongs: ISong[], tryKeepCurrent: boolean) {
-    if (tryKeepCurrent && currentSong.value) {
-      newSongs.splice(0, 0, currentSong.value);
-    }
-
-    //currentSong.value = newSongs[0];
-    thumbnail.value = newSongs[0].thumbnailUrl;
     playlist.value = newSongs;
 
     const tracks = newSongs.map((song) => {
@@ -160,49 +122,25 @@ export function setupBookPlayer(htmlPlayer: Ref<HTMLAudioElement | null>) {
 
   const songLibrary = useSongLibrary();
 
-  async function rerollSongs(keepCurrent: boolean) {
-    // let items = songLibrary.songs;
-
+  async function rerollSongs(firstSong?: ISong) {
     const newSongs: ISong[] = [];
 
-    for (let i = 0; i < 20; i++) {
+    if (firstSong) {
+      newSongs.push(firstSong);
+    }
+
+    for (let i = 0; newSongs.length < 20; i++) {
       const next = await songLibrary.getRandomSong();
       if (next) {
         newSongs.push(next);
+      } else {
+        break;
       }
     }
 
+    const keepCurrent = !!firstSong && firstSong === currentSong.value;
     updatePlaylist(newSongs, keepCurrent);
-
-    if (!keepCurrent) {
-      player.skip_to_track(0);
-    }
-
-    // songLibrary.nextSongs = newSongs;
-    // let idx = (Math.random() * items.length) | 0;
-    // let item = items[idx];
-
-    //bookPlayer.loadSong(item);
   }
-
-  // const seekWithoutUndo = async (newPosition:number) => {
-  //   if(seekingWithoutUndo) {
-  //     return;
-  //   }
-
-  //   seekingWithoutUndo = true;
-  //   await player.seekAbsolute(newPosition);
-  // };
-
-  // const undoLongSeek = async () => {
-  //   if(seekingWithoutUndo) {
-  //     return;
-  //   }
-
-  //   await seekWithoutUndo(sessionState.value.longSeekHistory.pop() ?? 0);
-  // }
-
-  void rerollSongs(true);
 
   const bookPlayer: IBookPlayer = {
     state: state,
@@ -211,8 +149,6 @@ export function setupBookPlayer(htmlPlayer: Ref<HTMLAudioElement | null>) {
     playlist: playlist,
     updatePlaylist: updatePlaylist,
     rerollSongs: rerollSongs,
-    //undoLongSeek: undoLongSeek,
-    //seekWithoutUndo: seekWithoutUndo
   };
 
   provide(BookPlayerKey, bookPlayer);

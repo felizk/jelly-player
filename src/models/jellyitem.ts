@@ -22,6 +22,13 @@ export interface IBaseItem {
   UserData: IItemUserData;
 }
 
+export interface IUser {
+  Id: string;
+  Name: string;
+  PrimaryImageTag: string;
+  HasPassword: boolean;
+}
+
 export interface ISong {
   id: string;
   title: string;
@@ -41,11 +48,14 @@ export function songFromItem(
   apiToken: string
 ): ISong {
   let imageItem: string | undefined;
+  let imageTag: string | undefined;
 
   if (item.ImageTags.Primary) {
-    imageItem = item.AlbumId;
+    imageItem = item.Id;
+    imageTag = item.ImageTags.Primary;
   } else if (item.AlbumPrimaryImageTag) {
     imageItem = item.AlbumId;
+    imageTag = item.AlbumPrimaryImageTag;
   } else {
     imageItem = item.ArtistItems[0]?.Id;
   }
