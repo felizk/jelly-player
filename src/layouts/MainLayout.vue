@@ -108,8 +108,16 @@
           @click="playSong(song)"
         >
           <q-item-section top avatar class="q-ml-none">
-            <q-avatar size="50px" rounded>
+            <q-avatar size="50px" rounded v-if="song.thumbnailUrl">
               <img :src="song.thumbnailUrl" />
+            </q-avatar>
+            <q-avatar
+              icon="music_note"
+              size="50px"
+              color="secondary"
+              rounded
+              v-else
+            >
             </q-avatar>
           </q-item-section>
 
@@ -158,7 +166,6 @@ import { useSettings } from 'src/stores/settingsStore';
 const settings = useSettings();
 let bookPlayer = injectBookPlayer();
 let songLibrary = useSongLibrary();
-const api = JellyfinAPI.instance;
 const auth = useAuthStore();
 const router = useRouter();
 const quickSearchText = ref<string>('');
@@ -178,7 +185,7 @@ watch(quickSearchText, (text) => {
   if (text) {
     const results = fuzzysort.go(text, songLibrary.songs, {
       keys: ['title', 'album', 'artist'],
-      limit: 5,
+      limit: 20,
     });
     searchResults.value = results.map((x) => x.obj);
   } else {

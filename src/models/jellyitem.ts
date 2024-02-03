@@ -63,8 +63,6 @@ export function songFromItem(
   } else if (item.AlbumPrimaryImageTag) {
     imageItem = item.AlbumId;
     imageTag = item.AlbumPrimaryImageTag;
-  } else {
-    imageItem = item.ArtistItems[0]?.Id;
   }
 
   if (imageTag) imageTag = `&tag=${imageTag}`;
@@ -74,6 +72,10 @@ export function songFromItem(
     rating = 5;
   }
 
+  const thumbnailUrl = imageItem
+    ? `${baseUrl}/Items/${imageItem}/Images/Primary?ApiKey=${apiToken}${imageTag}`
+    : '';
+
   return {
     id: item.Id,
     title: item.Name,
@@ -82,7 +84,7 @@ export function songFromItem(
     artist: item.ArtistItems[0]?.Name ?? 'Unknown',
     artistId: item.ArtistItems[0]?.Id ?? '',
     url: `${baseUrl}/Audio/${item.Id}/universal?ApiKey=${apiToken}`,
-    thumbnailUrl: `${baseUrl}/Items/${imageItem}/Images/Primary?ApiKey=${apiToken}${imageTag}`,
+    thumbnailUrl: thumbnailUrl,
     isFavorite: item.UserData.IsFavorite,
     isLiked: item.UserData.Likes,
     rating: rating ?? 0,

@@ -2,8 +2,20 @@
   <div style="min-width: 100px" class="full-width bg-primary text-white">
     <div v-if="small" class="row no-wrap items-center q-pt-xs">
       <div class="col-auto q-px-sm">
-        <q-avatar rounded size="70px">
+        <q-avatar
+          rounded
+          size="70px"
+          v-if="bookPlayer.currentSong.value?.thumbnailUrl"
+        >
           <img :src="bookPlayer.currentSong.value?.thumbnailUrl" />
+        </q-avatar>
+        <q-avatar
+          icon="music_note"
+          size="70px"
+          color="secondary"
+          rounded
+          v-else
+        >
         </q-avatar>
         <!-- <img height="75" :src="bookPlayer.thumbnail.value" /> -->
       </div>
