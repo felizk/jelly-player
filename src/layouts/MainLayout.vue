@@ -99,54 +99,20 @@
       :breakpoint="0"
     >
       <q-list>
-        <q-item
+        <SongItem
           v-for="(song, index) in searchResults"
+          :song="song"
           :key="index"
-          clickable
           :active="index == selectedSearchResult"
-          active-class="my-menu-link"
-          @click="playSong(song)"
+          @playSong="playSong(song)"
+          :show-rating="false"
         >
-          <q-item-section top avatar class="q-ml-none">
-            <q-avatar size="50px" rounded v-if="song.thumbnailUrl">
-              <img :src="song.thumbnailUrl" />
-            </q-avatar>
-            <q-avatar
-              icon="music_note"
-              size="50px"
-              color="secondary"
-              rounded
-              v-else
-            >
-            </q-avatar>
-          </q-item-section>
-
-          <q-item-section>
-            <q-item-label>{{ song.title }}</q-item-label>
-            <q-item-label caption lines="1">
-              {{ song.artist }} - {{ song.album }}
-            </q-item-label>
-          </q-item-section>
-          <!-- <q-item-section side>
-            <div class="row">
-              <q-btn
-                color="primary"
-                flat
-                dense
-                round
-                :icon="song.isFavorite ? 'favorite' : 'favorite_border'"
-                @click.stop="
-                  JellyfinMusic.setFavorited(api, song, !song.isFavorite)
-                "
-              />
-            </div>
-          </q-item-section> -->
-        </q-item>
+        </SongItem>
       </q-list>
     </q-drawer>
 
     <q-footer :model-value="footerOpen">
-      <book-player :small="true" />
+      <BookPlayer :small="true" />
     </q-footer>
   </q-layout>
 </template>
@@ -158,10 +124,11 @@ import BookPlayer from 'components/BookPlayer.vue';
 import fuzzysort from 'fuzzysort';
 import { useSongLibrary } from 'src/stores/songlibrary';
 import { ISong } from 'src/models/jellyitem';
-import { JellyfinAPI, JellyfinMusic } from 'src/models/jellyfin';
+import { JellyfinAPI } from 'src/models/jellyfin';
 import { useAuthStore } from 'src/stores/authStore';
 import { useRouter } from 'vue-router';
 import { useSettings } from 'src/stores/settingsStore';
+import SongItem from 'src/components/SongItem.vue';
 
 const settings = useSettings();
 let bookPlayer = injectBookPlayer();

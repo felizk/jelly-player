@@ -24,8 +24,12 @@ export const useSongLibrary = defineStore('songLibrary', () => {
   }
 
   function updateWeights() {
-    // Whenever we generate 10 random songs, we want to get 8 favorites and 2 others.
-    // To do this we have to balance the weights so that the total weight of favorites is 4 times the weight of others.
+    // This algorithm is a bit complex, but it's designed to give a good mix of favorites and non-favorites
+    // while also taking into account the user's favoritePercentage setting. It's a bit of a balancing act.
+    // The basic idea is to give a weight to each song based on its rating, and then distribute the remaining
+    // weight among the non-favorite songs. The favorite songs are given a weight based on the favoritePercentage
+    // setting, and the non-favorite songs are given a weight based on their rating. Then we use a weighted random
+    // selection algorithm to pick the next song.
 
     const candidates = songs.value.filter((x) => x.rating != 1);
 
