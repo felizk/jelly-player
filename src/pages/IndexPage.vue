@@ -23,6 +23,18 @@
         </q-item-section>
         <q-item-section side>
           <div class="row">
+            <q-rating
+              :model-value="song.rating"
+              :max="5"
+              size="sm"
+              color="primary"
+              icon="favorite_border"
+              icon-selected="favorite"
+              icon-half="favorite"
+              @update:model-value="(value) => updateRating(song, value)"
+              @click.stop
+            />
+            <!--
             <q-btn
               color="primary"
               flat
@@ -32,7 +44,7 @@
               @click.stop="
                 JellyfinMusic.setFavorited(api, song, !song.isFavorite)
               "
-            />
+            /> -->
           </div>
         </q-item-section>
       </q-item>
@@ -52,12 +64,17 @@
 <script setup lang="ts">
 import { injectBookPlayer } from 'src/models/bookplayer';
 import { JellyfinAPI, JellyfinMusic } from 'src/models/jellyfin';
+import { ISong } from 'src/models/jellyitem';
 
 let bookPlayer = injectBookPlayer();
 const api = JellyfinAPI.instance;
 
 function playSong(songIndex: number) {
   bookPlayer.player.skip_to_track(songIndex);
+}
+
+function updateRating(song: ISong, newRating: number) {
+  JellyfinMusic.updateRating(api, song, newRating);
 }
 </script>
 

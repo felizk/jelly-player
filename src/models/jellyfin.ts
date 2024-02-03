@@ -1,4 +1,10 @@
-import { IBaseItem, ISong, IUser, songFromItem } from './jellyitem';
+import {
+  IBaseItem,
+  IRatingPlaylist,
+  ISong,
+  IUser,
+  songFromItem,
+} from './jellyitem';
 import axios, { AxiosInstance } from 'axios';
 
 export class JellyfinConnection {
@@ -102,6 +108,8 @@ export class JellyfinAPI {
 }
 
 export class JellyfinMusic {
+  private static ratingPlaylists: IRatingPlaylist[] = [];
+
   static async getAllSongs(api: JellyfinAPI | undefined) {
     if (!api) return [];
 
@@ -112,8 +120,108 @@ export class JellyfinMusic {
       },
     });
 
+    JellyfinMusic.ratingPlaylists =
+      (await this.ensureRatingPlaylists(api)) ?? [];
+
+    const ratings = new Map<string, number>();
+    for (const playlist of JellyfinMusic.ratingPlaylists) {
+      const playlistItems = await api.axios.get(
+        `/Playlists/${playlist.id}/Items?userId=${api.userId}`
+      );
+
+      for (const item of playlistItems.data.Items) {
+        ratings.set(item.Id, playlist.rating);
+      }
+    }
+
     const items = itemsResponse.data.Items as IBaseItem[];
-    return items.map((x) => songFromItem(x, api.axios.getUri(), api.token));
+    const songs = items.map((x) =>
+      songFromItem(x, api.axios.getUri(), api.token, ratings.get(x.Id) ?? 0)
+    );
+    return songs;
+  }
+
+  static async ensureRatingPlaylists(api: JellyfinAPI | undefined) {
+    if (!api) return;
+
+    const playlists = await api.axios.get(`/Users/${api.userId}/Items`, {
+      params: {
+        IncludeItemTypes: 'Playlist',
+        recursive: true,
+      },
+    });
+
+    async function ensureRatingPlaylist(rating: number) {
+      if (!api) return;
+
+      const playlist = playlists.data.Items.find(
+        (x: IBaseItem) => x.Name === `Rating_${rating}`
+      );
+
+      if (!playlist) {
+        console.log('Creating playlist' + rating);
+        return (
+          await api.axios.post('/Playlists', {
+            Name: `Rating_${rating}`,
+            UserId: api.userId,
+            Ids: [],
+            MediaType: 'Audio',
+          })
+        ).data.Id;
+      } else {
+        return playlist.Id;
+      }
+    }
+
+    const ratingPlaylists: IRatingPlaylist[] = [];
+    for (let i = 1; i <= 4; i++) {
+      const newPlaylist: IRatingPlaylist = {
+        id: await ensureRatingPlaylist(i),
+        rating: i,
+      };
+
+      ratingPlaylists.push(newPlaylist);
+    }
+
+    return ratingPlaylists;
+  }
+
+  static async updateRating(
+    api: JellyfinAPI | undefined,
+    song: ISong,
+    rating: number
+  ) {
+    if (!api) return;
+
+    const currentPlaylist = JellyfinMusic.ratingPlaylists.find(
+      (x) => x.rating === song.rating
+    );
+
+    const newPlaylist = JellyfinMusic.ratingPlaylists.find(
+      (x) => x.rating === rating
+    );
+
+    if (currentPlaylist) {
+      await this.removeFromPlaylist(api, song, currentPlaylist.id);
+    }
+
+    if (song.isFavorite && rating < 5) {
+      // If the song was previously rated as a favorite, we need to remove it from the favorites list
+      if (song.isFavorite) {
+        await this.setFavorited(api, song, false);
+      }
+    }
+
+    try {
+      if (newPlaylist) {
+        await this.addToPlaylist(api, song, newPlaylist.id);
+      } else if (rating == 5) {
+        // If the song is being rated as a favorite, we need to add it to the favorites list
+        await this.setFavorited(api, song, true);
+      }
+
+      song.rating = rating;
+    } catch {}
   }
 
   static async setFavorited(
@@ -154,6 +262,38 @@ export class JellyfinMusic {
 
     await api.axios.post(
       `/Users/${api.userId}/PlayedItems/${song.id}?datePlayed=${isoDateTime}`
+    );
+  }
+
+  static async addToPlaylist(
+    api: JellyfinAPI | undefined,
+    song: ISong,
+    playlistId: string
+  ) {
+    if (!api) return;
+
+    await api.axios.post(
+      `/Playlists/${playlistId}/Items?ids=${song.id}&userId=${api.userId}`
+    );
+  }
+
+  static async removeFromPlaylist(
+    api: JellyfinAPI | undefined,
+    song: ISong,
+    playlistId: string
+  ) {
+    if (!api) return;
+
+    const playlistItems = await api.axios.get(
+      `/Playlists/${playlistId}/Items?userId=${api.userId}`
+    );
+
+    const entryId = playlistItems.data.Items.find(
+      (x: any) => x.Id === song.id
+    ).PlaylistItemId;
+
+    await api.axios.delete(
+      `/Playlists/${playlistId}/Items?EntryIds=${entryId}`
     );
   }
 }

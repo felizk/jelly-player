@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { ISong } from 'src/models/jellyitem';
+import { IRatingPlaylist, ISong } from 'src/models/jellyitem';
 import { IWeightedGroup, nextRandomSong } from 'src/models/randommath';
 import { ref } from 'vue';
 

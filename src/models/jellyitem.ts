@@ -40,12 +40,19 @@ export interface ISong {
   thumbnailUrl: string;
   isFavorite: boolean;
   isLiked: boolean;
+  rating: number;
+}
+
+export interface IRatingPlaylist {
+  id: string;
+  rating: number;
 }
 
 export function songFromItem(
   item: IBaseItem,
   baseUrl: string,
-  apiToken: string
+  apiToken: string,
+  rating?: number
 ): ISong {
   let imageItem: string | undefined;
   let imageTag: string | undefined;
@@ -60,16 +67,24 @@ export function songFromItem(
     imageItem = item.ArtistItems[0]?.Id;
   }
 
+  if (imageTag) imageTag = `&tag=${imageTag}`;
+  else imageTag = '';
+
+  if (item.UserData.IsFavorite) {
+    rating = 5;
+  }
+
   return {
     id: item.Id,
     title: item.Name,
     album: item.Album,
     albumId: item.AlbumId,
-    artist: item.ArtistItems[0].Name,
-    artistId: item.ArtistItems[0].Id,
+    artist: item.ArtistItems[0]?.Name ?? 'Unknown',
+    artistId: item.ArtistItems[0]?.Id ?? '',
     url: `${baseUrl}/Audio/${item.Id}/universal?ApiKey=${apiToken}`,
-    thumbnailUrl: `${baseUrl}/Items/${imageItem}/Images/Primary?ApiKey=${apiToken}`,
+    thumbnailUrl: `${baseUrl}/Items/${imageItem}/Images/Primary?ApiKey=${apiToken}${imageTag}`,
     isFavorite: item.UserData.IsFavorite,
     isLiked: item.UserData.Likes,
+    rating: rating ?? 0,
   };
 }

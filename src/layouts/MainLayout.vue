@@ -8,7 +8,7 @@
               <q-item-label header>Favorite Ratio</q-item-label>
               <q-item>
                 <q-item-section side>
-                  <q-icon color="deep-orange" name="favorite" />
+                  <q-icon color="primary" name="favorite" />
                 </q-item-section>
                 <q-item-section>
                   <q-slider
@@ -23,14 +23,14 @@
                       }
                     "
                     label
-                    color="deep-orange"
+                    color="primary"
                   />
                 </q-item-section>
               </q-item>
 
               <q-item>
                 <q-item-section side>
-                  <q-icon color="deep-orange" name="library_music" />
+                  <q-icon color="primary" name="library_music" />
                 </q-item-section>
 
                 <q-item-section>
@@ -46,7 +46,7 @@
                       }
                     "
                     label
-                    color="deep-orange"
+                    color="primary"
                   />
                 </q-item-section>
               </q-item>
@@ -119,7 +119,7 @@
               {{ song.artist }} - {{ song.album }}
             </q-item-label>
           </q-item-section>
-          <q-item-section side>
+          <!-- <q-item-section side>
             <div class="row">
               <q-btn
                 color="primary"
@@ -132,7 +132,7 @@
                 "
               />
             </div>
-          </q-item-section>
+          </q-item-section> -->
         </q-item>
       </q-list>
     </q-drawer>
