@@ -1,6 +1,25 @@
 # Jelly Player (jellyplayer)
 
-A music player for jellyfin
+This is my toy app of a music player that connects to a Jellyfin Server.
+
+I created it because I wanted to be able to control the "recommendation algorithm" to use; and of course for fun.
+
+I hope it can be useful for someone else who wants to play with the Jellyfin API. Or someone who wants to make a Quasar App.
+
+Quasar & Vue was chosen because it's what I know and like.
+
+Shoutout to James Harvey from [finamp](https://github.com/jmshrv/finamp) for the nice blog post that got me started: https://jmshrv.com/posts/jellyfin-api/
+
+## Features to take inspiration from
+ * Has a login page with navigation guards on the route. (bumps you back to the login screen if not authenticated)
+ * Jellyfin API Access patterns
+ * How to get the pictures for the songs, albums and artists
+ * An audio player that sticks around while navigating the UI
+ * A silly little randomization algorithm for picking songs making sure to fill the playlist with a certain ratio of favorite songs.
+ * Uses a nice little search algorithm '[fuzzysort](https://github.com/farzher/fuzzysort)' for quick lookup
+ * How to link to items in the Jellyfin UI
+
+
 
 ## Install the dependencies
 ```bash
