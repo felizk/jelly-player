@@ -6,7 +6,7 @@ I created it because I wanted to be able to control the "recommendation algorith
 
 I hope it can be useful for someone else who wants to play with the Jellyfin API. Or someone who wants to make a Quasar App.
 
-Quasar & Vue chosen because it's what I know and like.
+Quasar & Vue was chosen because it's what I know and like.
 
 Shoutout to James Harvey from [finamp](https://github.com/jmshrv/finamp) for the nice blog post that got me started: https://jmshrv.com/posts/jellyfin-api/
 
