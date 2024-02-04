@@ -7,7 +7,9 @@ import {
 } from 'vue-router';
 
 import routes from './routes';
-import { JellyfinAPI } from 'src/models/jellyfin';
+import { JellyfinAPI, JellyfinConnection } from 'src/models/jellyfin';
+import { LocalStorage } from 'quasar';
+import { injectBookPlayer } from 'src/models/bookplayer';
 
 /*
  * If not building with SSR mode, you can
@@ -35,10 +37,20 @@ export default route(function (/* { store, ssrContext } */) {
     history: createHistory(process.env.VUE_ROUTER_BASE),
   });
 
-  Router.beforeEach((to, from, next) => {
-    const isAuthenticated = !!JellyfinAPI.instance;
+  Router.beforeEach(async (to, from, next) => {
+    if (!JellyfinAPI.instance) {
+      const server = LocalStorage.getItem<string>('login_server') ?? '';
+      const token = LocalStorage.getItem<string>('login_token') ?? '';
+      if (server && token) {
+        const connection = JellyfinConnection.create(server);
+        const reloginApi = await connection.authenticateWithToken(token);
+        if (reloginApi) {
+          JellyfinAPI.instance = reloginApi;
+        }
+      }
+    }
 
-    if (!isAuthenticated && to.meta.requiresAuth) {
+    if (!JellyfinAPI.instance && to.meta.requiresAuth) {
       // Redirect to the login page
       next('/login');
     } else {

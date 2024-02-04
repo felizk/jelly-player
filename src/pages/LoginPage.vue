@@ -1,8 +1,6 @@
 <template>
   <div class="fullscreen text-center q-pa-md flex flex-center">
-    <div v-if="isBusy">
-      <q-spinner-ios color="primary" size="10em" />
-    </div>
+    <load-spinner v-if="isBusy" />
     <div v-else>
       <h3>Jelly Player</h3>
       <q-form @submit="onConnect" class="q-gutter-md q-my-lg">
@@ -58,20 +56,14 @@
 </template>
 
 <script setup lang="ts">
-import { injectBookPlayer } from 'src/models/bookplayer';
-import {
-  JellyfinAPI,
-  JellyfinConnection,
-  JellyfinMusic,
-} from 'src/models/jellyfin';
+import { JellyfinAPI, JellyfinConnection } from 'src/models/jellyfin';
 import { IUser } from 'src/models/jellyitem';
 import { useAuthStore } from 'src/stores/authStore';
-import { useSongLibrary } from 'src/stores/songlibrary';
 import { ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
+import LoadSpinner from 'src/components/LoadSpinner.vue';
 
 const router = useRouter();
-const bookPlayer = injectBookPlayer();
 const auth = useAuthStore();
 
 const server = ref(auth.server);
@@ -123,21 +115,7 @@ async function onConnect() {
       server.value = server.value.substring(0, server.value.length - 1);
     }
 
-    connection = new JellyfinConnection(
-      'JellyPlayer',
-      'MyDevice',
-      'MyId',
-      '0.0.1',
-      server.value
-    );
-
-    if (token.value) {
-      const reloginApi = await connection.authenticateWithToken(token.value);
-      if (reloginApi) {
-        JellyfinAPI.instance = reloginApi;
-        await navigate();
-      }
-    }
+    connection = JellyfinConnection.create(server.value);
 
     users.value = await connection.getUsers();
     connected.value = true;
@@ -165,10 +143,6 @@ async function login() {
 async function navigate() {
   if (!JellyfinAPI.instance) return;
   auth.token = JellyfinAPI.instance.token;
-
-  const lib = useSongLibrary();
-  lib.setSongs(await JellyfinMusic.getAllSongs(JellyfinAPI.instance));
-  void bookPlayer.rerollSongs();
   await router.push('/');
 }
 

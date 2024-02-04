@@ -10,6 +10,7 @@ export interface IItemUserData {
 
 export interface IBaseItem {
   Id: string;
+  ServerId: string;
   Name: string;
   Album?: string;
   AlbumId?: string;

@@ -5,10 +5,7 @@ import { ref } from 'vue';
 
 export const useSongLibrary = defineStore('songLibrary', () => {
   const songs = ref<ISong[]>([]);
-  const currentSong = ref<ISong>();
-
-  const playedSongs = ref<ISong[]>([]);
-  const nextSongs = ref<ISong[]>([]);
+  const lookup = new Map<string, ISong>();
 
   const weightedGroups = ref<IWeightedGroup[]>([]);
 
@@ -20,6 +17,8 @@ export const useSongLibrary = defineStore('songLibrary', () => {
 
   function setSongs(newSongs: ISong[]) {
     songs.value = newSongs;
+    lookup.clear();
+    newSongs.forEach((x) => lookup.set(x.id, x));
     updateWeights();
   }
 
@@ -97,9 +96,7 @@ export const useSongLibrary = defineStore('songLibrary', () => {
     favoritePercentage,
     updateWeights,
     songs,
-    currentSong,
-    playedSongs,
-    nextSongs,
+    lookup,
     setSongs,
     getRandomSong,
   };

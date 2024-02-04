@@ -23,7 +23,13 @@
     <q-item-section>
       <q-item-label>{{ song.title }}</q-item-label>
       <q-item-label caption lines="1">
-        {{ song.artist }} - {{ song.album }}
+        {{ song.artist }} -
+        <router-link
+          class="hover-link"
+          :to="`/Album/${song.albumId}`"
+          @click.stop
+          >{{ song.album }}</router-link
+        >
       </q-item-label>
     </q-item-section>
     <q-item-section side v-if="props.showRating">

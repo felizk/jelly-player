@@ -16,6 +16,16 @@ export class JellyfinConnection {
     private baseUrl: string
   ) {}
 
+  static create(server: string) {
+    return new JellyfinConnection(
+      'JellyPlayer',
+      'MyDevice',
+      'MyId',
+      '0.0.1',
+      server
+    );
+  }
+
   async getUsers() {
     const api = axios.create({ baseURL: this.baseUrl });
 
@@ -295,5 +305,18 @@ export class JellyfinMusic {
     await api.axios.delete(
       `/Playlists/${playlistId}/Items?EntryIds=${entryId}`
     );
+  }
+
+  static async getAlbum(api: JellyfinAPI | undefined, id: string) {
+    if (!api) return;
+
+    const albumResponse = await api.axios.get(
+      `/Users/${api.userId}/Items?ids=${id}`
+    );
+    const albumSongs = await api.axios.get(
+      `/Users/${api.userId}/Items?parentId=${id}`
+    );
+    albumResponse.data.Items[0].Children = albumSongs.data.Items;
+    return albumResponse.data.Items[0];
   }
 }

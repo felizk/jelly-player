@@ -57,7 +57,11 @@
             </q-list>
           </q-menu>
         </q-btn>
-        <q-toolbar-title> Jelly Player </q-toolbar-title>
+        <q-toolbar-title
+          ><router-link class="hover-link" to="/"
+            >Jelly Player</router-link
+          ></q-toolbar-title
+        >
         <q-input
           dark
           dense
@@ -84,7 +88,9 @@
     </q-header>
 
     <q-page-container>
-      <router-view />
+      <LoadSpinner v-if="isBusy" />
+
+      <router-view v-else />
     </q-page-container>
 
     <q-drawer
@@ -124,11 +130,12 @@ import BookPlayer from 'components/BookPlayer.vue';
 import fuzzysort from 'fuzzysort';
 import { useSongLibrary } from 'src/stores/songlibrary';
 import { ISong } from 'src/models/jellyitem';
-import { JellyfinAPI } from 'src/models/jellyfin';
+import { JellyfinAPI, JellyfinMusic } from 'src/models/jellyfin';
 import { useAuthStore } from 'src/stores/authStore';
 import { useRouter } from 'vue-router';
 import { useSettings } from 'src/stores/settingsStore';
 import SongItem from 'src/components/SongItem.vue';
+import LoadSpinner from 'src/components/LoadSpinner.vue';
 
 const settings = useSettings();
 let bookPlayer = injectBookPlayer();
@@ -204,6 +211,18 @@ function signOut() {
   auth.reset();
   router.push('/login');
 }
+
+const isBusy = ref(true);
+async function load() {
+  try {
+    const lib = useSongLibrary();
+    lib.setSongs(await JellyfinMusic.getAllSongs(JellyfinAPI.instance));
+    void bookPlayer.rerollSongs();
+  } finally {
+    isBusy.value = false;
+  }
+}
+load();
 </script>
 
 <style lang="sass">

@@ -17,7 +17,7 @@ export interface IBookPlayer {
   player: IAudioPlayerControls;
   currentSong: Ref<ISong | undefined>;
   playlist: Ref<ISong[]>;
-  updatePlaylist(newSongs: ISong[], tryKeepCurrent: boolean): void;
+  updatePlaylist(newSongs: ISong[], tryKeepCurrent: boolean): Promise<void>;
   rerollSongs(firstSong?: ISong): Promise<void>;
 }
 
