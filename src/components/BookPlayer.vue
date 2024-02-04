@@ -1,6 +1,7 @@
 <template>
   <div style="min-width: 100px" class="full-width bg-primary text-white">
     <div class="row no-wrap items-center q-pt-xs">
+      <!-- Song Thumbnail -->
       <div class="col-auto q-px-sm">
         <q-avatar
           rounded
@@ -18,6 +19,8 @@
         >
         </q-avatar>
       </div>
+
+      <!-- Playback slider -->
       <div class="col">
         <div class="row no-wrap q-px-sm">
           <q-slider
@@ -32,6 +35,7 @@
           ></q-slider>
         </div>
 
+        <!-- Song info and button controls -->
         <div class="row justify-between items-start">
           <q-list class="full-width" v-if="bookPlayer.currentSong.value">
             <q-item class="q-pt-none q-pl-sm">
@@ -40,8 +44,19 @@
                   bookPlayer.currentSong.value.title
                 }}</q-item-label>
                 <q-item-label caption lines="1" class="text-white"
-                  >{{ bookPlayer.currentSong.value.artist }} -
-                  {{ bookPlayer.currentSong.value.album }}</q-item-label
+                  ><router-link
+                    class="hover-link"
+                    :to="`/Artist/${bookPlayer.currentSong.value.artistId}`"
+                    @click.stop
+                    >{{ bookPlayer.currentSong.value.artist }}</router-link
+                  >
+                  -
+                  <router-link
+                    class="hover-link"
+                    :to="`/Album/${bookPlayer.currentSong.value.albumId}`"
+                    @click.stop
+                    >{{ bookPlayer.currentSong.value.album }}</router-link
+                  ></q-item-label
                 >
               </q-item-section>
               <q-item-section side>
