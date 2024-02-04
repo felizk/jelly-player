@@ -18,6 +18,7 @@ Shoutout to James Harvey from [finamp](https://github.com/jmshrv/finamp) for the
  * A silly little randomization algorithm for picking songs making sure to fill the playlist with a certain ratio of favorite songs.
  * Uses a nice little search algorithm '[fuzzysort](https://github.com/farzher/fuzzysort)' for quick lookup
  * How to link to items in the Jellyfin UI
+ * A sneaky way to support ratings. I really should fork jellyfin and contribute a way to add user rating through API. 
 
 
 
