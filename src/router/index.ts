@@ -44,7 +44,7 @@ export default route(function (/* { store, ssrContext } */) {
         const connection = JellyfinConnection.create(server);
         const reloginApi = await connection.authenticateWithToken(token);
         if (reloginApi) {
-          JellyfinAPI.instance = reloginApi;
+          JellyfinAPI.setInstance(reloginApi);
         }
       }
     }

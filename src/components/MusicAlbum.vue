@@ -1,3 +1,10 @@
+<!--
+  This is the album view for music. It displays the album art, artist, and songs in the album.
+  It also allows the user to play the songs in the album.
+
+  This also has an example usage of skeleton loading.
+-->
+
 <template>
   <div class="q-pa-md" v-if="isBusy">
     <q-skeleton size="150px" />
@@ -69,14 +76,25 @@
           <q-btn
             round
             flat
+            size="sm"
             icon="open_in_new"
             color="primary"
-            class="q-mx-sm"
             :href="jellyfinUrl"
             target="_blank"
           />
         </h4>
-        <h5 class="q-ma-lg">{{ songs[0]?.artist }}</h5>
+        <h5 class="q-ma-lg">
+          {{ songs[0]?.artist }}
+          <q-btn
+            round
+            flat
+            size="sm"
+            icon="open_in_new"
+            color="primary"
+            :href="artistUrl"
+            target="_blank"
+          />
+        </h5>
       </div>
     </div>
     <q-separator class="q-mb-lg" />
@@ -97,7 +115,7 @@
 <script setup lang="ts">
 import { injectBookPlayer } from 'src/models/bookplayer';
 import { ref, watch } from 'vue';
-import { JellyfinAPI, JellyfinMusic } from 'src/models/jellyfin';
+import { JellyfinAPI } from 'src/models/jellyfin';
 import { IArtistItem, IBaseItem, ISong } from 'src/models/jellyitem';
 import { useSongLibrary } from 'src/stores/songlibrary';
 import SongItem from 'src/components/SongItem.vue';
@@ -108,21 +126,20 @@ export interface MusicAlbumProps {
 
 const props = defineProps<MusicAlbumProps>();
 
+const api = JellyfinAPI.instance;
 const songLibrary = useSongLibrary();
+const bookPlayer = injectBookPlayer();
+const isBusy = ref(true);
 
-let bookPlayer = injectBookPlayer();
+const songs = ref<ISong[]>([]);
+const thumbnailUrl = ref<string>('');
+const jellyfinUrl = ref<string>('');
+const artistUrl = ref<string>('');
 
 async function playSong(songIndex: number) {
   await bookPlayer.updatePlaylist(songs.value, false);
   await bookPlayer.player.skip_to_track(songIndex);
 }
-
-const isBusy = ref(true);
-const api = JellyfinAPI.instance;
-
-const songs = ref<ISong[]>([]);
-const thumbnailUrl = ref<string>('');
-const jellyfinUrl = ref<string>('');
 
 const emit = defineEmits<{
   (e: 'albumLoaded', artist: IArtistItem, albumName: string): void;
@@ -131,8 +148,7 @@ const emit = defineEmits<{
 async function loadAlbum() {
   try {
     isBusy.value = true;
-    const albumData = (await JellyfinMusic.getAlbum(
-      api,
+    const albumData = (await api.getAlbumAndSongs(
       props.albumId as string
     )) as IBaseItem & { Children: IBaseItem[] };
 
@@ -140,17 +156,14 @@ async function loadAlbum() {
 
     songs.value = albumData.Children.map((x: IBaseItem) =>
       songLibrary.lookup.get(x.Id)
-    ).filter((x: any) => x) as ISong[];
+    ).filter((x) => x) as ISong[];
 
     thumbnailUrl.value = albumData.ImageTags.Primary
-      ? `${api?.axios.getUri()}/Items/${albumData.Id}/Images/Primary?ApiKey=${
-          api?.token
-        }&tag=${albumData.ImageTags.Primary}`
+      ? api.makePrimaryImageUrl(albumData)
       : '';
 
-    jellyfinUrl.value = `${api?.axios.getUri()}/web/index.html#!/details?id=${
-      albumData.Id
-    }&serverId=${albumData.ServerId}`;
+    jellyfinUrl.value = api.makeJellyfinItemUrl(albumData.Id);
+    artistUrl.value = api.makeJellyfinItemUrl(albumData.ArtistItems[0].Id);
 
     // bookPlayer.setPlaylist(album.Songs);
   } catch (e) {

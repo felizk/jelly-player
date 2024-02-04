@@ -51,24 +51,13 @@
           @update:model-value="updateRating"
           @click.stop
         />
-        <!--
-          <q-btn
-            color="primary"
-            flat
-            dense
-            round
-            :icon="song.isFavorite ? 'favorite' : 'favorite_border'"
-            @click.stop="
-              JellyfinMusic.setFavorited(api, song, !song.isFavorite)
-            "
-          /> -->
       </div>
     </q-item-section>
   </q-item>
 </template>
 
 <script setup lang="ts">
-import { JellyfinAPI, JellyfinMusic } from 'src/models/jellyfin';
+import { JellyfinAPI } from 'src/models/jellyfin';
 import { ISong } from 'src/models/jellyitem';
 
 export interface SongItemProps {
@@ -78,7 +67,7 @@ export interface SongItemProps {
 }
 
 function updateRating(newRating: number) {
-  JellyfinMusic.updateRating(JellyfinAPI.instance, props.song, newRating);
+  JellyfinAPI.instance.updateRating(props.song, newRating);
 }
 
 const props = defineProps<SongItemProps>();

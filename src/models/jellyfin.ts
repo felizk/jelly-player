@@ -1,10 +1,4 @@
-import {
-  IBaseItem,
-  IRatingPlaylist,
-  ISong,
-  IUser,
-  songFromItem,
-} from './jellyitem';
+import { IBaseItem, IRatingPlaylist, ISong, IUser } from './jellyitem';
 import axios, { AxiosInstance } from 'axios';
 
 export class JellyfinConnection {
@@ -57,7 +51,7 @@ export class JellyfinConnection {
     const userId = response.data?.User?.Id;
     token = response.data['AccessToken'];
     api.defaults.headers.common['Authorization'] = this.makeAuthString(token);
-    return new JellyfinAPI(api, userId, token);
+    return new JellyfinAPI(api, userId, response.data?.ServerId, token);
   }
 
   async authenticateWithToken(token: string) {
@@ -72,7 +66,7 @@ export class JellyfinConnection {
 
       const userId = response.data?.Id;
       api.defaults.headers.common['Authorization'] = this.makeAuthString(token);
-      return new JellyfinAPI(api, userId, token);
+      return new JellyfinAPI(api, userId, response.data?.ServerId, token);
     } catch {}
 
     return undefined;
@@ -87,14 +81,15 @@ export class JellyfinAPI {
   public constructor(
     private _api: AxiosInstance,
     private _userId: string,
+    private _serverId: string,
     private _token: string
   ) {}
 
   static get instance() {
-    return this._instance;
+    return this._instance as JellyfinAPI;
   }
 
-  static set instance(val) {
+  static setInstance(val: JellyfinAPI | undefined) {
     this._instance = val;
   }
 
@@ -114,29 +109,22 @@ export class JellyfinAPI {
     return !!this.token;
   }
 
-  private static _instance: JellyfinAPI | undefined;
-}
+  private ratingPlaylists: IRatingPlaylist[] = [];
 
-export class JellyfinMusic {
-  private static ratingPlaylists: IRatingPlaylist[] = [];
-
-  static async getAllSongs(api: JellyfinAPI | undefined) {
-    if (!api) return [];
-
-    const itemsResponse = await api.axios.get(`/Users/${api.userId}/Items`, {
+  async getAllSongs() {
+    const itemsResponse = await this.axios.get(`/Users/${this.userId}/Items`, {
       params: {
         IncludeItemTypes: 'Audio',
         recursive: true,
       },
     });
 
-    JellyfinMusic.ratingPlaylists =
-      (await this.ensureRatingPlaylists(api)) ?? [];
+    this.ratingPlaylists = (await this.ensureRatingPlaylists()) ?? [];
 
     const ratings = new Map<string, number>();
-    for (const playlist of JellyfinMusic.ratingPlaylists) {
-      const playlistItems = await api.axios.get(
-        `/Playlists/${playlist.id}/Items?userId=${api.userId}`
+    for (const playlist of this.ratingPlaylists) {
+      const playlistItems = await this.axios.get(
+        `/Playlists/${playlist.id}/Items?userId=${this.userId}`
       );
 
       for (const item of playlistItems.data.Items) {
@@ -146,34 +134,29 @@ export class JellyfinMusic {
 
     const items = itemsResponse.data.Items as IBaseItem[];
     const songs = items.map((x) =>
-      songFromItem(x, api.axios.getUri(), api.token, ratings.get(x.Id) ?? 0)
+      this.songFromItem(x, ratings.get(x.Id) ?? 0)
     );
     return songs;
   }
 
-  static async ensureRatingPlaylists(api: JellyfinAPI | undefined) {
-    if (!api) return;
-
-    const playlists = await api.axios.get(`/Users/${api.userId}/Items`, {
+  async ensureRatingPlaylists() {
+    const playlists = await this.axios.get(`/Users/${this.userId}/Items`, {
       params: {
         IncludeItemTypes: 'Playlist',
         recursive: true,
       },
     });
 
-    async function ensureRatingPlaylist(rating: number) {
-      if (!api) return;
-
+    const ensureRatingPlaylist = async (rating: number) => {
       const playlist = playlists.data.Items.find(
         (x: IBaseItem) => x.Name === `Rating_${rating}`
       );
 
       if (!playlist) {
-        console.log('Creating playlist' + rating);
         return (
-          await api.axios.post('/Playlists', {
+          await this.axios.post('/Playlists', {
             Name: `Rating_${rating}`,
-            UserId: api.userId,
+            UserId: this.userId,
             Ids: [],
             MediaType: 'Audio',
           })
@@ -181,7 +164,7 @@ export class JellyfinMusic {
       } else {
         return playlist.Id;
       }
-    }
+    };
 
     const ratingPlaylists: IRatingPlaylist[] = [];
     for (let i = 1; i <= 4; i++) {
@@ -196,137 +179,100 @@ export class JellyfinMusic {
     return ratingPlaylists;
   }
 
-  static async updateRating(
-    api: JellyfinAPI | undefined,
-    song: ISong,
-    rating: number
-  ) {
-    if (!api) return;
-
-    const currentPlaylist = JellyfinMusic.ratingPlaylists.find(
+  async updateRating(song: ISong, rating: number) {
+    const currentPlaylist = this.ratingPlaylists.find(
       (x) => x.rating === song.rating
     );
 
-    const newPlaylist = JellyfinMusic.ratingPlaylists.find(
-      (x) => x.rating === rating
-    );
+    const newPlaylist = this.ratingPlaylists.find((x) => x.rating === rating);
 
     if (currentPlaylist) {
-      await this.removeFromPlaylist(api, song, currentPlaylist.id);
+      await this.removeFromPlaylist(song, currentPlaylist.id);
     }
 
     if (song.isFavorite && rating < 5) {
       // If the song was previously rated as a favorite, we need to remove it from the favorites list
       if (song.isFavorite) {
-        await this.setFavorited(api, song, false);
+        await this.setFavorited(song, false);
       }
     }
 
     try {
       if (newPlaylist) {
-        await this.addToPlaylist(api, song, newPlaylist.id);
+        await this.addToPlaylist(song, newPlaylist.id);
       } else if (rating == 5) {
         // If the song is being rated as a favorite, we need to add it to the favorites list
-        await this.setFavorited(api, song, true);
+        await this.setFavorited(song, true);
       }
 
       song.rating = rating;
     } catch {}
   }
 
-  static async setFavorited(
-    api: JellyfinAPI | undefined,
-    song: ISong,
-    shouldBeFavorite: boolean
-  ) {
-    if (!api) return;
-
+  async setFavorited(song: ISong, shouldBeFavorite: boolean) {
     if (shouldBeFavorite) {
-      await api.axios.post(`/Users/${api.userId}/FavoriteItems/${song.id}`);
+      await this.axios.post(`/Users/${this.userId}/FavoriteItems/${song.id}`);
       song.isFavorite = true;
     } else {
-      await api.axios.delete(`/Users/${api.userId}/FavoriteItems/${song.id}`);
+      await this.axios.delete(`/Users/${this.userId}/FavoriteItems/${song.id}`);
       song.isFavorite = false;
     }
   }
 
-  static async setLiked(
-    api: JellyfinAPI | undefined,
-    song: ISong,
-    shouldBeLiked: boolean
-  ) {
-    if (!api) return;
-
-    await api.axios.post(
-      `/Users/${api.userId}/Items/${song.id}/Rating?likes=${shouldBeLiked}`
+  async setLiked(song: ISong, shouldBeLiked: boolean) {
+    await this.axios.post(
+      `/Users/${this.userId}/Items/${song.id}/Rating?likes=${shouldBeLiked}`
     );
     song.isLiked = shouldBeLiked;
   }
 
-  static async markPlayed(api: JellyfinAPI | undefined, song: ISong) {
-    if (!api) return;
+  async markPlayed(song: ISong) {
     const currentDate = new Date();
 
     // Format the date in ISO 8601 format
     const isoDateTime = currentDate.toISOString();
 
-    await api.axios.post(
-      `/Users/${api.userId}/PlayedItems/${song.id}?datePlayed=${isoDateTime}`
+    await this.axios.post(
+      `/Users/${this.userId}/PlayedItems/${song.id}?datePlayed=${isoDateTime}`
     );
   }
 
-  static async addToPlaylist(
-    api: JellyfinAPI | undefined,
-    song: ISong,
-    playlistId: string
-  ) {
-    if (!api) return;
-
-    await api.axios.post(
-      `/Playlists/${playlistId}/Items?ids=${song.id}&userId=${api.userId}`
+  async addToPlaylist(song: ISong, playlistId: string) {
+    await this.axios.post(
+      `/Playlists/${playlistId}/Items?ids=${song.id}&userId=${this.userId}`
     );
   }
 
-  static async removeFromPlaylist(
-    api: JellyfinAPI | undefined,
-    song: ISong,
-    playlistId: string
-  ) {
-    if (!api) return;
-
-    const playlistItems = await api.axios.get(
-      `/Playlists/${playlistId}/Items?userId=${api.userId}`
+  async removeFromPlaylist(song: ISong, playlistId: string) {
+    const playlistItems = await this.axios.get(
+      `/Playlists/${playlistId}/Items?userId=${this.userId}`
     );
 
     const entryId = playlistItems.data.Items.find(
       (x: any) => x.Id === song.id
     ).PlaylistItemId;
 
-    await api.axios.delete(
+    await this.axios.delete(
       `/Playlists/${playlistId}/Items?EntryIds=${entryId}`
     );
   }
 
-  static async getAlbum(api: JellyfinAPI | undefined, id: string) {
-    if (!api) return;
-
-    const albumResponse = await api.axios.get(
-      `/Users/${api.userId}/Items?ids=${id}`
+  async getAlbumAndSongs(id: string) {
+    const albumResponse = await this.axios.get(
+      `/Users/${this.userId}/Items?ids=${id}`
     );
-    const albumSongs = await api.axios.get(
-      `/Users/${api.userId}/Items?parentId=${id}`
+    const albumSongs = await this.axios.get(
+      `/Users/${this.userId}/Items?parentId=${id}`
     );
     albumResponse.data.Items[0].Children = albumSongs.data.Items;
     return albumResponse.data.Items[0];
   }
 
-  static async getArtistAlbums(api: JellyfinAPI | undefined, id: string) {
-    if (!api) return;
-
-    const artistResponse = await api.axios.get(
-      `/Users/${api.userId}/Items?ids=${id}`
+  async getArtistAlbums(id: string) {
+    const artistResponse = await this.axios.get(
+      `/Users/${this.userId}/Items?ids=${id}`
     );
-    const artistAlbums = await api.axios.get(`/Users/${api.userId}/Items`, {
+    const artistAlbums = await this.axios.get(`/Users/${this.userId}/Items`, {
       params: {
         ParentId: id,
         IncludeItemTypes: 'Album',
@@ -335,4 +281,70 @@ export class JellyfinMusic {
     artistResponse.data.Items[0].Children = artistAlbums.data.Items;
     return artistResponse.data.Items[0];
   }
+
+  makePrimaryImageUrl(item: IBaseItem) {
+    return this.makeImageUrl(item.Id, 'Primary', item.ImageTags.Primary);
+  }
+
+  makeLogoImageUrl(item: IBaseItem) {
+    return this.makeImageUrl(item.Id, 'Logo', item.ImageTags.Logo);
+  }
+
+  makeImageUrl(itemId: string, type: string, tag?: string) {
+    const tagParam = tag ? `&tag=${tag}` : '';
+    return `${this.axios.getUri()}/Items/${itemId}/Images/${type}?api_key=${
+      this.token
+    }${tagParam}`;
+  }
+
+  makeJellyfinItemUrl(itemId: string) {
+    return `${this.axios.getUri()}/web/index.html#!/item?id=${itemId}&serverId=${
+      this._serverId
+    }`;
+  }
+
+  songFromItem(item: IBaseItem, rating?: number): ISong {
+    let thumbnailUrl = '';
+
+    // Fallback to album image if no primary image is available
+    if (item.ImageTags.Primary) {
+      thumbnailUrl = this.makeImageUrl(
+        item.Id,
+        'Primary',
+        item.ImageTags.Primary
+      );
+    } else if (item.AlbumId && item.AlbumPrimaryImageTag) {
+      thumbnailUrl = this.makeImageUrl(
+        item.AlbumId,
+        'Primary',
+        item.AlbumPrimaryImageTag
+      );
+    }
+
+    if (item.UserData.IsFavorite) {
+      rating = 5;
+    }
+
+    return {
+      id: item.Id,
+      title: item.Name,
+      album: item.Album,
+      albumId: item.AlbumId,
+      artist: item.ArtistItems[0]?.Name ?? 'Unknown',
+      artistId: item.ArtistItems[0]?.Id ?? '',
+      url: this.getAudioStreamUrl(item.Id),
+      thumbnailUrl: thumbnailUrl,
+      isFavorite: item.UserData.IsFavorite,
+      isLiked: item.UserData.Likes,
+      rating: rating ?? 0,
+    };
+  }
+
+  getAudioStreamUrl(itemId: string) {
+    return `${this.axios.getUri()}/Audio/${itemId}/universal?ApiKey=${
+      this._token
+    }`;
+  }
+
+  private static _instance: JellyfinAPI | undefined;
 }

@@ -133,7 +133,9 @@ async function login() {
   try {
     isBusy.value = true;
     if (!connection) return;
-    JellyfinAPI.instance = await connection.authenticate(user.value, pw.value);
+    JellyfinAPI.setInstance(
+      await connection.authenticate(user.value, pw.value)
+    );
     await navigate();
   } finally {
     isBusy.value = false;

@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { LocalStorage } from 'quasar';
-import { ref, watch, watchEffect } from 'vue';
+import { ref, watch } from 'vue';
 
 export const useAuthStore = defineStore('authStore', () => {
   const server = ref<string>(LocalStorage.getItem('login_server') ?? '');
