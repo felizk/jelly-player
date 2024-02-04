@@ -249,7 +249,7 @@ export class JellyfinAPI {
     );
 
     const entryId = playlistItems.data.Items.find(
-      (x: any) => x.Id === song.id
+      (x: IBaseItem) => x.Id === song.id
     ).PlaylistItemId;
 
     await this.axios.delete(
@@ -298,7 +298,7 @@ export class JellyfinAPI {
   }
 
   makeJellyfinItemUrl(itemId: string) {
-    return `${this.axios.getUri()}/web/index.html#!/item?id=${itemId}&serverId=${
+    return `${this.axios.getUri()}/web/index.html#!/details?id=${itemId}&serverId=${
       this._serverId
     }`;
   }
