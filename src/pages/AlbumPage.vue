@@ -1,3 +1,4 @@
+<!-- This is the page that shows an album -->
 <template>
   <q-page class="row items-top justify-evenly">
     <div class="col-xs-12 col-sm-8">
@@ -40,6 +41,7 @@ const id = ref<string>(route.params.albumId as string);
 const albumName = ref('');
 const artist = ref<IArtistItem | undefined>(undefined);
 
+// We gotta watch the route and update if it changes to point to another album.
 watch(
   () => route.params.albumId,
   async (newId) => {

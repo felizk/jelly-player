@@ -1,3 +1,5 @@
+// I'm honestly not sure a store is right for this. Haven't quite nailed dependency injection in Vue yet.
+
 import { defineStore } from 'pinia';
 import { ISong } from 'src/models/jellyitem';
 import { IWeightedGroup, nextRandomSong } from 'src/models/randommath';
