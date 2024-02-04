@@ -23,7 +23,13 @@
     <q-item-section>
       <q-item-label>{{ song.title }}</q-item-label>
       <q-item-label caption lines="1">
-        {{ song.artist }} -
+        <router-link
+          class="hover-link"
+          :to="`/Artist/${song.artistId}`"
+          @click.stop
+          >{{ song.artist }}</router-link
+        >
+        -
         <router-link
           class="hover-link"
           :to="`/Album/${song.albumId}`"

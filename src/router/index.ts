@@ -9,7 +9,6 @@ import {
 import routes from './routes';
 import { JellyfinAPI, JellyfinConnection } from 'src/models/jellyfin';
 import { LocalStorage } from 'quasar';
-import { injectBookPlayer } from 'src/models/bookplayer';
 
 /*
  * If not building with SSR mode, you can

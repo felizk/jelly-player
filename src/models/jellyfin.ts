@@ -319,4 +319,20 @@ export class JellyfinMusic {
     albumResponse.data.Items[0].Children = albumSongs.data.Items;
     return albumResponse.data.Items[0];
   }
+
+  static async getArtistAlbums(api: JellyfinAPI | undefined, id: string) {
+    if (!api) return;
+
+    const artistResponse = await api.axios.get(
+      `/Users/${api.userId}/Items?ids=${id}`
+    );
+    const artistAlbums = await api.axios.get(`/Users/${api.userId}/Items`, {
+      params: {
+        ParentId: id,
+        IncludeItemTypes: 'Album',
+      },
+    });
+    artistResponse.data.Items[0].Children = artistAlbums.data.Items;
+    return artistResponse.data.Items[0];
+  }
 }
