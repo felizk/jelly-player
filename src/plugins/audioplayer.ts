@@ -1,6 +1,5 @@
 import { Capacitor, registerPlugin, WebPlugin } from '@capacitor/core';
-import { LocalStorage } from 'quasar';
-import { ITrack, ITrackPosition } from 'src/models/audioplayer';
+import { ITrack } from 'src/models/audioplayer';
 
 export interface ITimeChange {
   position: number;
@@ -16,21 +15,6 @@ export class WebAudioPlayer extends WebPlugin {
     this.tracks = tracks;
     this.index = currentTrack;
   }
-
-  // loadUrl(request: {
-  //   id: string;
-  //   tracks: ITrack[];
-  //   startPosition?: ITrackPosition;
-  // }): Promise<void> {
-  //   if (this.playerElement) {
-  //     this.tracks = request.tracks;
-  //     this.startTrack(request.startPosition?.track ?? 0);
-  //     this.startSeek = request.startPosition?.position ?? 0;
-  //     //this.currentSession = DatabaseInstance.makeSession(request.id, this.startSeek + this.currentTrackStart());
-  //   }
-
-  //   return Promise.resolve();
-  // }
 
   seekAbsolute(request: { seconds: number }): Promise<void> {
     if (this.playerElement) {
@@ -122,14 +106,6 @@ export class WebAudioPlayer extends WebPlugin {
     this.notifyListeners('onLoaded', null);
   }
 
-  loadLatestPosition(request: { id: string }): Promise<ITrackPosition> {
-    const position = LocalStorage.getItem(`pos:${request.id}`) as number;
-
-    const track = LocalStorage.getItem(`track:${request.id}`) as number;
-
-    return Promise.resolve({ position: position ?? 0, track: track ?? 0 });
-  }
-
   private timeUpdate() {
     this.notifyListeners('timeUpdate', {
       position: this.currentTrackRelativePosition(),
@@ -170,8 +146,6 @@ export class WebAudioPlayer extends WebPlugin {
     return this.tracks[this.index]?.timeRange?.startSeconds ?? 0;
   }
 
-  // remember you gotta pass objects to all arguments
-  // use listener for state updates
   public playerElement: HTMLAudioElement | undefined;
   private index = 0;
   private expectedEnd = 0;

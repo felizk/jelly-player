@@ -1,3 +1,5 @@
+<!-- This is the page that shows an artist -->
+
 <template>
   <q-page class="row items-top justify-evenly">
     <load-spinner v-if="isBusy" />
@@ -70,8 +72,10 @@ async function loadArtist() {
   }
 }
 
+// Kick off loading the artist right away.
 loadArtist();
 
+// We gotta watch the route and update if it changes to point to another album.
 watch(
   () => route.params.id,
   async () => {

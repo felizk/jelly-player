@@ -1,9 +1,14 @@
+<!-- Login page -->
+
 <template>
   <div class="fullscreen text-center q-pa-md flex flex-center">
+    <!-- If we're loading something then show the spinner -->
     <load-spinner v-if="isBusy" />
     <div v-else>
       <h3>Jelly Player</h3>
-      <q-form @submit="onConnect" class="q-gutter-md q-my-lg">
+
+      <!-- We first have to connect to the server, then we can show users. -->
+      <q-form @submit="connectToServer" class="q-gutter-md q-my-lg">
         <q-input filled v-model="server" label="Server" />
         <span class="text-red" v-if="connectError">failed to connect</span>
         <div>
@@ -15,9 +20,11 @@
           />
         </div>
       </q-form>
+
+      <!-- List all the public users. -->
       <div class="row q-gutter-md items-center justify-center">
         <div class="column text-center" v-for="user in users" :key="user.Id">
-          <q-btn flat class="q-pa-none" @click="selectUser(user)">
+          <q-btn flat class="q-pa-none" @click="clickUserProfile(user)">
             <q-avatar
               rounded
               size="75px"
@@ -30,7 +37,8 @@
         </div>
       </div>
 
-      <q-form @submit="onSubmit" class="q-gutter-md q-my-lg" v-if="connected">
+      <!-- Also have a form for private users and to put in the password. -->
+      <q-form @submit="login" class="q-gutter-md q-my-lg" v-if="connected">
         <q-input
           filled
           v-model="user"
@@ -67,37 +75,40 @@ const router = useRouter();
 const auth = useAuthStore();
 
 const server = ref(auth.server);
-const users = ref<IUser[]>([]);
-const user = ref(auth.userName);
-const pw = ref('');
 const token = ref(auth.token);
+const user = ref();
+const users = ref<IUser[]>([]);
+const pw = ref('');
 const connected = ref(false);
 const connectError = ref(false);
 const pwField = ref<HTMLInputElement | undefined>();
 const isBusy = ref(!!server.value && !!token.value);
 let connection: JellyfinConnection | undefined;
 
+// Reset everything if the user changes the server
 watch(server, () => {
   connected.value = false;
   users.value = [];
 });
 
-function selectUser(selectedUser: IUser) {
+function clickUserProfile(selectedUser: IUser) {
   user.value = selectedUser.Name;
   pw.value = '';
 
+  // We can go straight to submit if the user doesn't have a pw.
   if (!selectedUser.HasPassword) {
-    void onSubmit();
+    void login();
   } else if (pwField.value) {
     pwField.value.focus();
   }
 }
 
-async function onConnect() {
+// Connect to the server and get the users.
+async function connectToServer() {
   try {
     isBusy.value = true;
 
-    // sanitize the ip
+    // Prepend http if it's missing.
     if (!URL.canParse(server.value)) {
       const httpVersion = `http://${server.value}`;
       if (URL.canParse(httpVersion)) {
@@ -105,50 +116,50 @@ async function onConnect() {
       }
     }
 
+    // This function actually throws if the URL is invalid.
     const url = new URL(server.value);
     if (!url.port) {
       url.port = '8096';
       server.value = url.toString();
     }
 
+    // Remove trailing slashes
     while (server.value.endsWith('/')) {
       server.value = server.value.substring(0, server.value.length - 1);
     }
 
     connection = JellyfinConnection.create(server.value);
 
-    users.value = await connection.getUsers();
+    users.value = await connection.getPublicUsers();
+
     connected.value = true;
+
+    // Save the server in the browser
     auth.server = server.value;
   } finally {
     isBusy.value = false;
   }
 }
 
-async function onSubmit() {
-  await login();
-}
-
 async function login() {
   try {
     isBusy.value = true;
     if (!connection) return;
+
     JellyfinAPI.setInstance(
       await connection.authenticate(user.value, pw.value)
     );
-    await navigate();
+
+    if (!JellyfinAPI.instance) return;
+
+    auth.token = JellyfinAPI.instance.token;
+    await router.push('/');
   } finally {
     isBusy.value = false;
   }
 }
 
-async function navigate() {
-  if (!JellyfinAPI.instance) return;
-  auth.token = JellyfinAPI.instance.token;
-  await router.push('/');
-}
-
 if (server.value) {
-  onConnect();
+  connectToServer();
 }
 </script>

@@ -1,5 +1,8 @@
-import { InjectionKey, provide, ref, Ref, shallowRef, watchEffect } from 'vue';
+// The playback part is a bit more complicated than I'd like.
+// This code was also taken from my older audiobook player
+// There are a acouple of layers going on because the book player had an android version as well using capacitor.
 
+import { InjectionKey, provide, ref, Ref, shallowRef, watchEffect } from 'vue';
 import { injectStrict } from 'src/compositionHelpers';
 import {
   HtmlAudioPlayer,

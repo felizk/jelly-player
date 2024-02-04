@@ -1,3 +1,4 @@
+<!-- This is the oldest code in this. Taken from an audiobook player I built. -->
 <template>
   <div style="min-width: 100px" class="full-width bg-primary text-white">
     <div class="row no-wrap items-center q-pt-xs">

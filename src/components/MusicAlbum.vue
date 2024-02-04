@@ -56,7 +56,9 @@
     </q-item>
   </div>
 
+  <!-- Here starts the album view  -->
   <div v-else>
+    <!-- Album header -->
     <div class="row justify-start">
       <q-avatar size="150px" class="q-mb-lg" rounded v-if="thumbnailUrl">
         <img :src="thumbnailUrl" />
@@ -97,7 +99,10 @@
         </h5>
       </div>
     </div>
+
     <q-separator class="q-mb-lg" />
+
+    <!-- Song list -->
     <q-list>
       <song-item
         v-for="(song, index) in songs"
@@ -126,6 +131,11 @@ export interface MusicAlbumProps {
 
 const props = defineProps<MusicAlbumProps>();
 
+// We emit an event when the album loads, primarily to populate breadcrumbs on other pages
+const emit = defineEmits<{
+  (e: 'albumLoaded', artist: IArtistItem, albumName: string): void;
+}>();
+
 const api = JellyfinAPI.instance;
 const songLibrary = useSongLibrary();
 const bookPlayer = injectBookPlayer();
@@ -140,10 +150,6 @@ async function playSong(songIndex: number) {
   await bookPlayer.updatePlaylist(songs.value, false);
   await bookPlayer.player.skip_to_track(songIndex);
 }
-
-const emit = defineEmits<{
-  (e: 'albumLoaded', artist: IArtistItem, albumName: string): void;
-}>();
 
 async function loadAlbum() {
   try {

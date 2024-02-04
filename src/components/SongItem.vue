@@ -1,4 +1,7 @@
+<!-- This is the common control for displaying a song -->
+
 <template>
+  <!-- We use active to set the background color of the playing song. -->
   <q-item
     clickable
     :active="props.active"
@@ -38,6 +41,7 @@
         >
       </q-item-label>
     </q-item-section>
+
     <q-item-section side v-if="props.showRating">
       <div class="row">
         <q-rating
@@ -66,14 +70,16 @@ export interface SongItemProps {
   active: boolean;
 }
 
-function updateRating(newRating: number) {
-  JellyfinAPI.instance.updateRating(props.song, newRating);
-}
-
 const props = defineProps<SongItemProps>();
+
+// What should happen when you click this song?
 const emit = defineEmits<{
   playSong: [];
 }>();
+
+function updateRating(newRating: number) {
+  JellyfinAPI.instance.updateRating(props.song, newRating);
+}
 </script>
 
 <style lang="sass">

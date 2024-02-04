@@ -1,3 +1,4 @@
+<!-- This is our start page that shows the currently playing items -->
 <template>
   <q-page class="row items-top justify-evenly">
     <div class="col-xs-12 col-sm-8">

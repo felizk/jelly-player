@@ -1,6 +1,9 @@
 import { IBaseItem, IRatingPlaylist, ISong, IUser } from './jellyitem';
 import axios, { AxiosInstance } from 'axios';
 
+/**
+ * This class is used to connect to a Jellyfin server and authenticate with it.
+ */
 export class JellyfinConnection {
   constructor(
     private clientName: string,
@@ -10,6 +13,12 @@ export class JellyfinConnection {
     private baseUrl: string
   ) {}
 
+  /**
+   * A helper that puts in the "Device" information for this Jellyfin client.
+   *
+   * @param server the server url
+   * @returns a connection object
+   */
   static create(server: string) {
     return new JellyfinConnection(
       'JellyPlayer',
@@ -20,7 +29,12 @@ export class JellyfinConnection {
     );
   }
 
-  async getUsers() {
+  /**
+   * Get a list of public users on the server.
+   *
+   * @returns a list of users
+   */
+  async getPublicUsers() {
     const api = axios.create({ baseURL: this.baseUrl });
 
     const response = await api.get('/Users/Public', {
@@ -31,6 +45,13 @@ export class JellyfinConnection {
     return response.data as IUser[];
   }
 
+  /**
+   * Authenticate with a username and password. Uses the /Users/AuthenticateByName endpoint.
+   *
+   * @param username the username
+   * @param pw the password
+   * @returns a JellyfinAPI object
+   */
   async authenticate(username: string, pw: string) {
     const api = axios.create({ baseURL: this.baseUrl });
     let token = '';
@@ -54,6 +75,12 @@ export class JellyfinConnection {
     return new JellyfinAPI(api, userId, response.data?.ServerId, token);
   }
 
+  /**
+   * Authenticate with a token. Tries to reuse the token to get information about the user.
+   *
+   * @param token the token
+   * @returns a JellyfinAPI object
+   */
   async authenticateWithToken(token: string) {
     const api = axios.create({ baseURL: this.baseUrl });
 
@@ -77,6 +104,10 @@ export class JellyfinConnection {
   }
 }
 
+/**
+ * This class is used to interact with a Jellyfin server.
+ * At the point you have one of these, you've already gone through authentication etc.
+ */
 export class JellyfinAPI {
   public constructor(
     private _api: AxiosInstance,
@@ -111,6 +142,13 @@ export class JellyfinAPI {
 
   private ratingPlaylists: IRatingPlaylist[] = [];
 
+  /**
+   * Get all songs on the server.
+   * This is a recursive call, so it will get all songs in all libraries.
+   * This also creates the rating playlists if they don't exist.
+   *
+   * @returns a list of songs
+   */
   async getAllSongs() {
     const itemsResponse = await this.axios.get(`/Users/${this.userId}/Items`, {
       params: {
@@ -139,6 +177,11 @@ export class JellyfinAPI {
     return songs;
   }
 
+  /**
+   * This gets or creates a playlist for every rating between 0 and 5 (exclusive).
+   * This is because setting the user rating on jellyfin isn't actually supported at the moment.
+   * It's a hacky way to get around that. :)
+   */
   async ensureRatingPlaylists() {
     const playlists = await this.axios.get(`/Users/${this.userId}/Items`, {
       params: {
@@ -179,6 +222,12 @@ export class JellyfinAPI {
     return ratingPlaylists;
   }
 
+  /**
+   * This sets the rating of this song on the server. It uses playlists to do this because setting a user rating isn't supported yet.
+   *
+   * @param song the song to rate
+   * @param rating the rating to give the song
+   */
   async updateRating(song: ISong, rating: number) {
     const currentPlaylist = this.ratingPlaylists.find(
       (x) => x.rating === song.rating
@@ -209,6 +258,12 @@ export class JellyfinAPI {
     } catch {}
   }
 
+  /**
+   * This sets the song as a favorite or not on the server.
+   *
+   * @param song the song to favorite
+   * @param shouldBeFavorite whether the song should be favorited
+   */
   async setFavorited(song: ISong, shouldBeFavorite: boolean) {
     if (shouldBeFavorite) {
       await this.axios.post(`/Users/${this.userId}/FavoriteItems/${song.id}`);
@@ -219,6 +274,12 @@ export class JellyfinAPI {
     }
   }
 
+  /**
+   * This sets the song as liked or not on the server.
+   *
+   * @param song the song to like
+   * @param shouldBeLiked whether the song should be liked
+   */
   async setLiked(song: ISong, shouldBeLiked: boolean) {
     await this.axios.post(
       `/Users/${this.userId}/Items/${song.id}/Rating?likes=${shouldBeLiked}`
@@ -226,6 +287,11 @@ export class JellyfinAPI {
     song.isLiked = shouldBeLiked;
   }
 
+  /**
+   * This marks the song as played on the server.
+   *
+   * @param song the song to mark as played
+   */
   async markPlayed(song: ISong) {
     const currentDate = new Date();
 
@@ -237,13 +303,27 @@ export class JellyfinAPI {
     );
   }
 
+  /**
+   * Adds a song to a playlist.
+   *
+   * @param song the song to add
+   * @param playlistId the playlist to add the song to
+   */
   async addToPlaylist(song: ISong, playlistId: string) {
     await this.axios.post(
       `/Playlists/${playlistId}/Items?ids=${song.id}&userId=${this.userId}`
     );
   }
 
+  /**
+   * Removes a song from a playlist.
+   *
+   * @param song the song to remove
+   * @param playlistId the playlist to remove the song from
+   */
   async removeFromPlaylist(song: ISong, playlistId: string) {
+    // Annoyingly, to remove an item you don't use the item ID, but an "entryId"
+    // So we gotta go find the entry id for this song first.
     const playlistItems = await this.axios.get(
       `/Playlists/${playlistId}/Items?userId=${this.userId}`
     );
@@ -257,6 +337,12 @@ export class JellyfinAPI {
     );
   }
 
+  /**
+   * Gets an album and all the songs for the album.
+   *
+   * @param id the album id
+   * @returns the album and all the songs in it
+   */
   async getAlbumAndSongs(id: string) {
     const albumResponse = await this.axios.get(
       `/Users/${this.userId}/Items?ids=${id}`
@@ -268,6 +354,12 @@ export class JellyfinAPI {
     return albumResponse.data.Items[0];
   }
 
+  /**
+   * Gets an artist and all the albums for the artist.
+   *
+   * @param id the artist id
+   * @returns the artist and all the albums in it
+   */
   async getArtistAlbums(id: string) {
     const artistResponse = await this.axios.get(
       `/Users/${this.userId}/Items?ids=${id}`
@@ -282,14 +374,34 @@ export class JellyfinAPI {
     return artistResponse.data.Items[0];
   }
 
+  /**
+   * Makes the URL for the primary image of an item.
+   *
+   * @param item the item to get the primary image for
+   * @returns an url
+   */
   makePrimaryImageUrl(item: IBaseItem) {
     return this.makeImageUrl(item.Id, 'Primary', item.ImageTags.Primary);
   }
 
+  /**
+   * Makes the URL for the logo image of an item.
+   *
+   * @param item the item to get the logo image for
+   * @returns an url
+   */
   makeLogoImageUrl(item: IBaseItem) {
     return this.makeImageUrl(item.Id, 'Logo', item.ImageTags.Logo);
   }
 
+  /**
+   * Makes the URL for an image of an item.
+   *
+   * @param itemId the item id
+   * @param type the type of image
+   * @param tag the tag of the image
+   * @returns an url
+   */
   makeImageUrl(itemId: string, type: string, tag?: string) {
     const tagParam = tag ? `&tag=${tag}` : '';
     return `${this.axios.getUri()}/Items/${itemId}/Images/${type}?api_key=${
@@ -297,12 +409,25 @@ export class JellyfinAPI {
     }${tagParam}`;
   }
 
+  /**
+   * Makes an URL that takes the user to the page for a certain item on the server.
+   *
+   * @param itemId the item id
+   * @returns an url
+   */
   makeJellyfinItemUrl(itemId: string) {
     return `${this.axios.getUri()}/web/index.html#!/details?id=${itemId}&serverId=${
       this._serverId
     }`;
   }
 
+  /**
+   * Converts an item to an ISong
+   *
+   * @param item the item to convert
+   * @param rating the rating of the song, this is because the rating isn't stored on the item
+   * @returns an ISong
+   */
   songFromItem(item: IBaseItem, rating?: number): ISong {
     let thumbnailUrl = '';
 

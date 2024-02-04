@@ -7,10 +7,6 @@
 
 import { ISong } from './jellyitem';
 
-// I'm thinking the easiest way to accomplish this for my case is to have a list of groups
-// For each group the weight is the same really
-// Lets try a few different groups
-
 export interface IWeightedGroup {
   name: string;
   weight: number;

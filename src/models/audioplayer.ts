@@ -1,3 +1,7 @@
+// The audio player is more complicated than I'd really like
+// This is because it's taken from a project where I used capacitor to play audio on android.
+// On Android you'd want to give it a set of tracks to play so you can navigate from a background service and show the controls on the lock screen.
+
 import { LocalStorage, debounce } from 'quasar';
 import { ITimeChange, WebAudioPlayer } from 'src/plugins/audioplayer';
 import { watchEffect } from 'vue';
@@ -143,10 +147,6 @@ export class HtmlAudioPlayer implements IAudioPlayerControls {
 
   skip_to_track(index: number): Promise<void> {
     return this.innerPlayer.skip_to_track({ index: index });
-  }
-
-  loadLatestPosition(id: string) {
-    return this.innerPlayer.loadLatestPosition({ id: id });
   }
 
   private timeUpdate(change: ITimeChange): void {
