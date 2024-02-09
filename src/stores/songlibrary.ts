@@ -64,16 +64,19 @@ export const useSongLibrary = defineStore('songLibrary', () => {
     const favoriteRatio = favoritePercentage.value / 100;
     const restRatio = 1 - favoriteRatio;
     const combinedWeight = restWeight * (1 / restRatio);
-    const weightPerFavorite =
-      (combinedWeight * favoriteRatio) / favorites.length;
 
     weightedGroups.value = [];
 
-    weightedGroups.value.push({
-      weight: weightPerFavorite,
-      name: 'favorites',
-      songs: favorites,
-    });
+    if (favorites.length > 0) {
+      const weightPerFavorite =
+        (combinedWeight * favoriteRatio) / favorites.length;
+
+      weightedGroups.value.push({
+        weight: weightPerFavorite,
+        name: 'favorites',
+        songs: favorites,
+      });
+    }
 
     weightedGroups.value.push({
       weight: rating4Weight,
