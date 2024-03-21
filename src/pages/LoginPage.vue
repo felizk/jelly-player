@@ -117,11 +117,11 @@ async function connectToServer() {
     }
 
     // This function actually throws if the URL is invalid.
-    const url = new URL(server.value);
-    if (!url.port) {
-      url.port = '8096';
-      server.value = url.toString();
-    }
+    new URL(server.value);
+    // if (!url.port) {
+    //   url.port = '8096';
+    //   server.value = url.toString();
+    // }
 
     // Remove trailing slashes
     while (server.value.endsWith('/')) {
