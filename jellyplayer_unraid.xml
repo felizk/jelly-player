@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Container>
+<Beta>True</Beta>
+<Category>Media</Category>
+<Date>2024-05-12</Date>
+<Changes>
+2024-05-12: First submit
+</Changes>
+<Support>http://forums.unraid.net</Support>
+<Name>Jelly Player</Name>
+<Description>
+A music player for Jellyfin.[br][br]
+I made this for myself, don't expect any support really.[br][br]
+</Description>
+<Registry>https://ghcr.io/felizk/jelly-player:main</Registry>
+<GitHub>https://github.com/felizk/jelly-player/</GitHub>
+<Repository>ghcr.io/felizk/jelly-player:main</Repository>
+<BindTime>true</BindTime>
+<Privileged>false</Privileged>
+<Network Default="bridge">bridge</Network>
+<WebUI>http://[IP]:[PORT:8097]</WebUI>
+<Banner>http://felizk.dk/unraid/jellyplayer.png</Banner>
+<Icon>http://felizk.dk/unraid/jellyplayer.png</Icon>
+<Config Type="Port" Name="Port" Target="8080" Default="8097" Mode="tcp" Display="always" Required="true" Description="Web port">8097</Config>
+</Container>
