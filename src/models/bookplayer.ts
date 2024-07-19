@@ -14,6 +14,7 @@ import { AudioPlayerPlugin, setHtmlAudioPlayer } from 'src/plugins/audioplayer';
 import { ISong } from './jellyitem';
 import { useSongLibrary } from 'src/stores/songlibrary';
 import { useSettings } from 'src/stores/settingsStore';
+import _ from 'underscore';
 
 export interface IBookPlayer {
   state: Ref<IAudioPlayerState>;
@@ -134,7 +135,12 @@ export function setupBookPlayer(htmlPlayer: Ref<HTMLAudioElement | null>) {
       newSongs.push(firstSong);
     }
 
-    for (let i = 0; newSongs.length < settings.listLength; i++) {
+    // If we're going to pin songs, here's where we'd do it.
+    // Get a list of randomized pinned songs from the library.
+    const pinnedSongs: ISong[] = _.shuffle(songLibrary.pinnedSongs.slice());
+    newSongs.push(...pinnedSongs);
+
+    for (let i = newSongs.length; newSongs.length < settings.listLength; i++) {
       const next = await songLibrary.getRandomSong();
       if (next) {
         newSongs.push(next);

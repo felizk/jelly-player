@@ -42,6 +42,7 @@ export interface ISong {
   isFavorite: boolean;
   isLiked: boolean;
   rating: number;
+  isPinned: boolean;
 }
 
 export interface IRatingPlaylist {

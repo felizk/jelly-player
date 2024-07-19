@@ -20,12 +20,14 @@
     "fuzzysort": "^2.0.4",
     "pinia": "^2.0.11",
     "quasar": "^2.8.0",
+    "underscore": "^1.13.6",
     "vue": "^3.2.29",
     "vue-router": "^4.0.12"
   },
   "devDependencies": {
     "@quasar/app-vite": "^1.4.3",
     "@types/node": "^12.20.21",
+    "@types/underscore": "^1.11.15",
     "@typescript-eslint/eslint-plugin": "^5.10.0",
     "@typescript-eslint/parser": "^5.10.0",
     "autoprefixer": "^10.4.2",

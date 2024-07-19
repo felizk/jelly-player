@@ -141,7 +141,7 @@ export class JellyfinAPI {
   }
 
   private ratingPlaylists: IRatingPlaylist[] = [];
-
+  private pinnedPlaylistId = '';
   /**
    * Get all songs on the server.
    * This is a recursive call, so it will get all songs in all libraries.
@@ -157,9 +157,11 @@ export class JellyfinAPI {
       },
     });
 
-    this.ratingPlaylists = (await this.ensureRatingPlaylists()) ?? [];
+    await this.ensureRatingPlaylists();
 
     const ratings = new Map<string, number>();
+    const pinned = new Map<string, boolean>();
+
     for (const playlist of this.ratingPlaylists) {
       const playlistItems = await this.axios.get(
         `/Playlists/${playlist.id}/Items?userId=${this.userId}`
@@ -170,9 +172,20 @@ export class JellyfinAPI {
       }
     }
 
+    // Load all the pinned songs.
+    {
+      const playlistItems = await this.axios.get(
+        `/Playlists/${this.pinnedPlaylistId}/Items?userId=${this.userId}`
+      );
+
+      for (const item of playlistItems.data.Items) {
+        pinned.set(item.Id, true);
+      }
+    }
+
     const items = itemsResponse.data.Items as IBaseItem[];
     const songs = items.map((x) =>
-      this.songFromItem(x, ratings.get(x.Id) ?? 0)
+      this.songFromItem(x, ratings.get(x.Id) ?? 0, pinned.get(x.Id) ?? false)
     );
     return songs;
   }
@@ -182,7 +195,10 @@ export class JellyfinAPI {
    * This is because setting the user rating on jellyfin isn't actually supported at the moment.
    * It's a hacky way to get around that. :)
    */
-  async ensureRatingPlaylists() {
+  private async ensureRatingPlaylists() {
+    this.ratingPlaylists = [];
+    this.pinnedPlaylistId = '';
+
     const playlists = await this.axios.get(`/Users/${this.userId}/Items`, {
       params: {
         IncludeItemTypes: 'Playlist',
@@ -190,15 +206,15 @@ export class JellyfinAPI {
       },
     });
 
-    const ensureRatingPlaylist = async (rating: number) => {
+    const ensureRatingPlaylist = async (playlistName: string) => {
       const playlist = playlists.data.Items.find(
-        (x: IBaseItem) => x.Name === `Rating_${rating}`
+        (x: IBaseItem) => x.Name === playlistName
       );
 
       if (!playlist) {
         return (
           await this.axios.post('/Playlists', {
-            Name: `Rating_${rating}`,
+            Name: playlistName,
             UserId: this.userId,
             Ids: [],
             MediaType: 'Audio',
@@ -212,14 +228,15 @@ export class JellyfinAPI {
     const ratingPlaylists: IRatingPlaylist[] = [];
     for (let i = 1; i <= 4; i++) {
       const newPlaylist: IRatingPlaylist = {
-        id: await ensureRatingPlaylist(i),
+        id: await ensureRatingPlaylist(`Rating_${i}`),
         rating: i,
       };
 
       ratingPlaylists.push(newPlaylist);
     }
 
-    return ratingPlaylists;
+    this.ratingPlaylists = ratingPlaylists;
+    this.pinnedPlaylistId = await ensureRatingPlaylist('JellyPlayerPinned');
   }
 
   /**
@@ -428,7 +445,7 @@ export class JellyfinAPI {
    * @param rating the rating of the song, this is because the rating isn't stored on the item
    * @returns an ISong
    */
-  songFromItem(item: IBaseItem, rating?: number): ISong {
+  songFromItem(item: IBaseItem, rating?: number, pinned?: boolean): ISong {
     let thumbnailUrl = '';
 
     // Fallback to album image if no primary image is available
@@ -462,6 +479,7 @@ export class JellyfinAPI {
       isFavorite: item.UserData.IsFavorite,
       isLiked: item.UserData.Likes,
       rating: rating ?? 0,
+      isPinned: !!pinned,
     };
   }
 
