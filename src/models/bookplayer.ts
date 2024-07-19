@@ -145,6 +145,7 @@ export function setupBookPlayer(htmlPlayer: Ref<HTMLAudioElement | null>) {
 
     const keepCurrent = !!firstSong && firstSong === currentSong.value;
     updatePlaylist(newSongs, keepCurrent);
+    window.scrollTo(0, 0);
   }
 
   const bookPlayer: IBookPlayer = {
