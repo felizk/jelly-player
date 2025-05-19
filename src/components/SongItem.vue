@@ -13,17 +13,24 @@
 
     <q-item-section>
       <q-item-label>{{ song.title }}</q-item-label>
-      <q-item-label caption lines="1">
+      <q-item-label caption lines="1" class="gt-xs">
         <router-link class="hover-link" :to="`/Artist/${song.artistId}`" @click.stop>{{ song.artist }}</router-link>
         -
         <router-link class="hover-link" :to="`/Album/${song.albumId}`" @click.stop>{{ song.album }}</router-link>
+      </q-item-label>
+      <q-item-label caption lines="1" class="xs">
+        {{ song.artist }}
+        -
+        {{ song.album }}
       </q-item-label>
     </q-item-section>
 
     <q-item-section side v-if="props.showRating">
       <div class="row">
         <q-rating :model-value="song.rating" :max="5" size="sm" color="primary" icon="favorite_border"
-          icon-selected="favorite" icon-half="favorite" @update:model-value="updateRating" @click.stop />
+          icon-selected="favorite" icon-half="favorite" @update:model-value="updateRating" @click.stop class="gt-xs" />
+        <q-rating :model-value="song.rating" :max="5" size="xs" color="primary" icon="favorite_border"
+          icon-selected="favorite" icon-half="favorite" @update:model-value="updateRating" @click.stop class="xs" />
       </div>
     </q-item-section>
   </q-item>
