@@ -21,7 +21,7 @@
         <div class="xs row no-wrap q-px-sm text-no-wrap" v-if="bookPlayer.currentSong.value">
           {{
             bookPlayer.currentSong.value.title
-          }} -
+          }} -&nbsp;
           <router-link class="hover-link" :to="`/Artist/${bookPlayer.currentSong.value.artistId}`" @click.stop>{{
             bookPlayer.currentSong.value.artist }}</router-link>
         </div>
@@ -31,7 +31,7 @@
           <div class="col gt-xs q-px-sm text-no-wrap" v-if="bookPlayer.currentSong.value">
             {{
               bookPlayer.currentSong.value.title
-            }} -
+            }} -&nbsp;
             <router-link class="hover-link" :to="`/Artist/${bookPlayer.currentSong.value.artistId}`" @click.stop>{{
               bookPlayer.currentSong.value.artist }}</router-link>
           </div>
