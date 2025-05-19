@@ -5,26 +5,21 @@
         <q-btn flat round dense icon="menu" class="q-mr-sm">
           <q-menu>
             <q-list style="min-width: 200px">
+              <q-item clickable v-close-popup to="playlists">
+                <q-item-section>Playlists</q-item-section>
+              </q-item>
+              <q-separator />
               <q-item-label header>Favorite Ratio</q-item-label>
               <q-item>
                 <q-item-section side>
                   <q-icon color="primary" name="favorite" />
                 </q-item-section>
                 <q-item-section>
-                  <q-slider
-                    class="q-pr-sm"
-                    :model-value="settings.favoriteRatio"
-                    :min="5"
-                    :max="95"
-                    :step="5"
-                    @change="
-                      (val) => {
-                        settings.favoriteRatio = val;
-                      }
-                    "
-                    label
-                    color="primary"
-                  />
+                  <q-slider class="q-pr-sm" :model-value="settings.favoriteRatio" :min="5" :max="95" :step="5" @change="
+                    (val) => {
+                      settings.favoriteRatio = val;
+                    }
+                  " label color="primary" />
                 </q-item-section>
               </q-item>
 
@@ -34,20 +29,11 @@
                 </q-item-section>
 
                 <q-item-section>
-                  <q-slider
-                    class="q-pr-sm"
-                    :model-value="settings.listLength"
-                    :min="5"
-                    :max="50"
-                    :step="1"
-                    @change="
-                      (val) => {
-                        settings.listLength = val;
-                      }
-                    "
-                    label
-                    color="primary"
-                  />
+                  <q-slider class="q-pr-sm" :model-value="settings.listLength" :min="5" :max="50" :step="1" @change="
+                    (val) => {
+                      settings.listLength = val;
+                    }
+                  " label color="primary" />
                 </q-item-section>
               </q-item>
               <q-separator />
@@ -57,31 +43,13 @@
             </q-list>
           </q-menu>
         </q-btn>
-        <q-toolbar-title
-          ><router-link class="hover-link" to="/"
-            >Jelly Player</router-link
-          ></q-toolbar-title
-        >
-        <q-input
-          dark
-          dense
-          standout
-          v-model="quickSearchText"
-          input-class="text-right"
-          class="q-ml-md"
-          @keyup.esc="quickSearchText = ''"
-          @keyup.enter="playSelectedSearchResult()"
-          @keydown="keyPress"
-          ref="searchBox"
-        >
+        <q-toolbar-title><router-link class="hover-link" to="/">Jelly Player</router-link></q-toolbar-title>
+        <q-input dark dense standout v-model="quickSearchText" input-class="text-right" class="q-ml-md"
+          @keyup.esc="quickSearchText = ''" @keyup.enter="playSelectedSearchResult()" @keydown="keyPress"
+          ref="searchBox">
           <template v-slot:append>
             <q-icon v-if="quickSearchText === ''" name="search" />
-            <q-icon
-              v-else
-              name="clear"
-              class="cursor-pointer"
-              @click="quickSearchText = ''"
-            />
+            <q-icon v-else name="clear" class="cursor-pointer" @click="quickSearchText = ''" />
           </template>
         </q-input>
       </q-toolbar>
@@ -93,26 +61,11 @@
       <router-view v-else />
     </q-page-container>
 
-    <q-drawer
-      v-model="leftDrawerOpen"
-      bordered
-      side="right"
-      @hide="quickSearchText = ''"
-      @keyup.esc="quickSearchText = ''"
-      @keydown="keyPress"
-      tabindex="0"
-      :overlay="false"
-      :breakpoint="0"
-    >
+    <q-drawer v-model="leftDrawerOpen" bordered side="right" @hide="quickSearchText = ''"
+      @keyup.esc="quickSearchText = ''" @keydown="keyPress" tabindex="0" :overlay="false" :breakpoint="0">
       <q-list>
-        <SongItem
-          v-for="(song, index) in searchResults"
-          :song="song"
-          :key="index"
-          :active="index == selectedSearchResult"
-          @playSong="playSong(song)"
-          :show-rating="false"
-        >
+        <SongItem v-for="(song, index) in searchResults" :song="song" :key="index"
+          :active="index == selectedSearchResult" @playSong="playSong(song)" :show-rating="false">
         </SongItem>
       </q-list>
     </q-drawer>

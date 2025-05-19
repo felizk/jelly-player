@@ -2,59 +2,28 @@
 
 <template>
   <!-- We use active to set the background color of the playing song. -->
-  <q-item
-    clickable
-    :active="props.active"
-    active-class="my-menu-link"
-    @click="emit('playSong')"
-  >
+  <q-item clickable :active="props.active" active-class="my-menu-link" @click="emit('playSong')">
     <q-item-section top avatar class="q-ml-none">
       <q-avatar size="50px" rounded v-if="song.thumbnailUrl">
         <img :src="song.thumbnailUrl" />
       </q-avatar>
-      <q-avatar
-        class="text-white"
-        icon="music_note"
-        size="50px"
-        color="secondary"
-        rounded
-        v-else
-      >
+      <q-avatar class="text-white" icon="music_note" size="50px" color="secondary" rounded v-else>
       </q-avatar>
     </q-item-section>
 
     <q-item-section>
       <q-item-label>{{ song.title }}</q-item-label>
       <q-item-label caption lines="1">
-        <router-link
-          class="hover-link"
-          :to="`/Artist/${song.artistId}`"
-          @click.stop
-          >{{ song.artist }}</router-link
-        >
+        <router-link class="hover-link" :to="`/Artist/${song.artistId}`" @click.stop>{{ song.artist }}</router-link>
         -
-        <router-link
-          class="hover-link"
-          :to="`/Album/${song.albumId}`"
-          @click.stop
-          >{{ song.album }}</router-link
-        >
+        <router-link class="hover-link" :to="`/Album/${song.albumId}`" @click.stop>{{ song.album }}</router-link>
       </q-item-label>
     </q-item-section>
 
     <q-item-section side v-if="props.showRating">
       <div class="row">
-        <q-rating
-          :model-value="song.rating"
-          :max="5"
-          size="sm"
-          color="primary"
-          icon="favorite_border"
-          icon-selected="favorite"
-          icon-half="favorite"
-          @update:model-value="updateRating"
-          @click.stop
-        />
+        <q-rating :model-value="song.rating" :max="5" size="sm" color="primary" icon="favorite_border"
+          icon-selected="favorite" icon-half="favorite" @update:model-value="updateRating" @click.stop />
       </div>
     </q-item-section>
   </q-item>

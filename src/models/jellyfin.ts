@@ -1,4 +1,4 @@
-import { IBaseItem, IRatingPlaylist, ISong, IUser } from './jellyitem';
+import { IBaseItem, IPlaylist, IRatingPlaylist, ISong, IUser } from './jellyitem';
 import axios, { AxiosInstance } from 'axios';
 
 /**
@@ -11,7 +11,7 @@ export class JellyfinConnection {
     private deviceId: string,
     private version: string,
     private baseUrl: string
-  ) {}
+  ) { }
 
   /**
    * A helper that puts in the "Device" information for this Jellyfin client.
@@ -20,10 +20,18 @@ export class JellyfinConnection {
    * @returns a connection object
    */
   static create(server: string) {
+    const agent = window.navigator.userAgent;
+
+    let id = localStorage.getItem('jellyfin-client-id')
+    if (!id) {
+      id = crypto.randomUUID();
+      localStorage.setItem('jellyfin-client-id', id);
+    }
+
     return new JellyfinConnection(
       'JellyPlayer',
-      'MyDevice',
-      'MyId',
+      agent,
+      id,
       '0.0.1',
       server
     );
@@ -94,7 +102,7 @@ export class JellyfinConnection {
       const userId = response.data?.Id;
       api.defaults.headers.common['Authorization'] = this.makeAuthString(token);
       return new JellyfinAPI(api, userId, response.data?.ServerId, token);
-    } catch {}
+    } catch { }
 
     return undefined;
   }
@@ -114,7 +122,7 @@ export class JellyfinAPI {
     private _userId: string,
     private _serverId: string,
     private _token: string
-  ) {}
+  ) { }
 
   static get instance() {
     return this._instance as JellyfinAPI;
@@ -141,7 +149,6 @@ export class JellyfinAPI {
   }
 
   private ratingPlaylists: IRatingPlaylist[] = [];
-  private pinnedPlaylistId = '';
   /**
    * Get all songs on the server.
    * This is a recursive call, so it will get all songs in all libraries.
@@ -160,7 +167,6 @@ export class JellyfinAPI {
     await this.ensureRatingPlaylists();
 
     const ratings = new Map<string, number>();
-    const pinned = new Map<string, boolean>();
 
     for (const playlist of this.ratingPlaylists) {
       const playlistItems = await this.axios.get(
@@ -172,20 +178,9 @@ export class JellyfinAPI {
       }
     }
 
-    // Load all the pinned songs.
-    {
-      const playlistItems = await this.axios.get(
-        `/Playlists/${this.pinnedPlaylistId}/Items?userId=${this.userId}`
-      );
-
-      for (const item of playlistItems.data.Items) {
-        pinned.set(item.Id, true);
-      }
-    }
-
     const items = itemsResponse.data.Items as IBaseItem[];
     const songs = items.map((x) =>
-      this.songFromItem(x, ratings.get(x.Id) ?? 0, pinned.get(x.Id) ?? false)
+      this.songFromItem(x, ratings.get(x.Id) ?? 0)
     );
     return songs;
   }
@@ -197,7 +192,6 @@ export class JellyfinAPI {
    */
   private async ensureRatingPlaylists() {
     this.ratingPlaylists = [];
-    this.pinnedPlaylistId = '';
 
     const playlists = await this.axios.get(`/Users/${this.userId}/Items`, {
       params: {
@@ -236,7 +230,6 @@ export class JellyfinAPI {
     }
 
     this.ratingPlaylists = ratingPlaylists;
-    this.pinnedPlaylistId = await ensureRatingPlaylist('JellyPlayerPinned');
   }
 
   /**
@@ -272,7 +265,7 @@ export class JellyfinAPI {
       }
 
       song.rating = rating;
-    } catch {}
+    } catch { }
   }
 
   /**
@@ -318,6 +311,47 @@ export class JellyfinAPI {
     await this.axios.post(
       `/Users/${this.userId}/PlayedItems/${song.id}?datePlayed=${isoDateTime}`
     );
+  }
+
+  async getPlaylists() {
+    const playlists = await this.axios.get(`/Users/${this.userId}/Items`, {
+      params: {
+        IncludeItemTypes: 'Playlist',
+        recursive: true,
+        fields: 'Path,ChildCount,Container',
+      },
+    });
+
+    return (playlists.data.Items as IBaseItem[])
+      .filter(x => !x.Name.startsWith('Rating_') && !x.Name.startsWith('JellyTube') && x.Path?.endsWith('.m3u') != true)
+      .map(x => this.playlistFromItem(x));
+  }
+
+  playlistFromItem(item: IBaseItem): IPlaylist {
+    let thumbnailUrl = '';
+
+    // Fallback to album image if no primary image is available
+    if (item.ImageTags.Primary) {
+      thumbnailUrl = this.makeImageUrl(
+        item.Id,
+        'Primary',
+        item.ImageTags.Primary
+      );
+    }
+
+    return {
+      id: item.Id,
+      title: item.Name,
+      thumbnailUrl: thumbnailUrl,
+    };
+  }
+
+  async getPlaylistItems(id: string) {
+    const albumSongs = await this.axios.get(
+      `/Playlists/${id}/Items`
+    );
+
+    return albumSongs.data.Items as IBaseItem[];
   }
 
   /**
@@ -421,9 +455,8 @@ export class JellyfinAPI {
    */
   makeImageUrl(itemId: string, type: string, tag?: string) {
     const tagParam = tag ? `&tag=${tag}` : '';
-    return `${this.axios.getUri()}/Items/${itemId}/Images/${type}?api_key=${
-      this.token
-    }${tagParam}`;
+    return `${this.axios.getUri()}/Items/${itemId}/Images/${type}?api_key=${this.token
+      }${tagParam}`;
   }
 
   /**
@@ -433,9 +466,8 @@ export class JellyfinAPI {
    * @returns an url
    */
   makeJellyfinItemUrl(itemId: string) {
-    return `${this.axios.getUri()}/web/index.html#!/details?id=${itemId}&serverId=${
-      this._serverId
-    }`;
+    return `${this.axios.getUri()}/web/index.html#!/details?id=${itemId}&serverId=${this._serverId
+      }`;
   }
 
   /**
@@ -445,7 +477,7 @@ export class JellyfinAPI {
    * @param rating the rating of the song, this is because the rating isn't stored on the item
    * @returns an ISong
    */
-  songFromItem(item: IBaseItem, rating?: number, pinned?: boolean): ISong {
+  songFromItem(item: IBaseItem, rating?: number): ISong {
     let thumbnailUrl = '';
 
     // Fallback to album image if no primary image is available
@@ -479,14 +511,12 @@ export class JellyfinAPI {
       isFavorite: item.UserData.IsFavorite,
       isLiked: item.UserData.Likes,
       rating: rating ?? 0,
-      isPinned: !!pinned,
     };
   }
 
   getAudioStreamUrl(itemId: string) {
-    return `${this.axios.getUri()}/Audio/${itemId}/universal?ApiKey=${
-      this._token
-    }`;
+    return `${this.axios.getUri()}/Audio/${itemId}/universal?ApiKey=${this._token
+      }`;
   }
 
   private static _instance: JellyfinAPI | undefined;

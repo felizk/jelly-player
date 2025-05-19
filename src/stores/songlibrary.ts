@@ -7,7 +7,6 @@ import { ref } from 'vue';
 
 export const useSongLibrary = defineStore('songLibrary', () => {
   const songs = ref<ISong[]>([]);
-  const pinnedSongs = ref<ISong[]>([]);
   const lookup = new Map<string, ISong>();
 
   const weightedGroups = ref<IWeightedGroup[]>([]);
@@ -20,7 +19,6 @@ export const useSongLibrary = defineStore('songLibrary', () => {
 
   function setSongs(newSongs: ISong[]) {
     songs.value = newSongs;
-    pinnedSongs.value = newSongs.filter((x) => x.isPinned);
     lookup.clear();
     newSongs.forEach((x) => lookup.set(x.id, x));
     updateWeights();
@@ -104,7 +102,6 @@ export const useSongLibrary = defineStore('songLibrary', () => {
     updateWeights,
     songs,
     lookup,
-    pinnedSongs,
     setSongs,
     getRandomSong,
   };

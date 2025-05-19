@@ -21,6 +21,7 @@ export interface IBaseItem {
   Type: string;
   ArtistItems: IArtistItem[];
   UserData: IItemUserData;
+  Path?: string;
 }
 
 export interface IUser {
@@ -42,10 +43,15 @@ export interface ISong {
   isFavorite: boolean;
   isLiked: boolean;
   rating: number;
-  isPinned: boolean;
 }
 
 export interface IRatingPlaylist {
   id: string;
   rating: number;
+}
+
+export interface IPlaylist {
+  id: string;
+  title: string;
+  thumbnailUrl: string;
 }
