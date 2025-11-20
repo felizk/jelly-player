@@ -499,13 +499,15 @@ export class JellyfinAPI {
       rating = 5;
     }
 
+    const artistItem = item.ArtistItems[0] ?? item.AlbumArtists[0];
+
     return {
       id: item.Id,
       title: item.Name,
       album: item.Album,
       albumId: item.AlbumId,
-      artist: item.ArtistItems[0]?.Name ?? 'Unknown',
-      artistId: item.ArtistItems[0]?.Id ?? '',
+      artist: artistItem?.Name ?? 'Unknown',
+      artistId: artistItem?.Id ?? '',
       url: this.getAudioStreamUrl(item.Id),
       thumbnailUrl: thumbnailUrl,
       isFavorite: item.UserData.IsFavorite,

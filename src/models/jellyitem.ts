@@ -20,6 +20,7 @@ export interface IBaseItem {
   MediaType: string;
   Type: string;
   ArtistItems: IArtistItem[];
+  AlbumArtists: IArtistItem[];
   UserData: IItemUserData;
   Path?: string;
 }
