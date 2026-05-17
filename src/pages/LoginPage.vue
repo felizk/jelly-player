@@ -11,18 +11,20 @@
       <q-form @submit="connectToServer" class="q-gutter-md q-my-lg">
         <q-input filled v-model="server" label="Server" />
         <span class="text-red" v-if="connectError">failed to connect</span>
+
+        <q-input filled v-model="user" label="User" lazy-rules
+          :rules="[(val) => (val && val.length > 0) || 'Please type something']" />
+
+        <q-input filled type="password" v-model="pw" label="Password" ref="pwField" />
+
         <div>
-          <q-btn
-            label="Connect"
-            type="submit"
-            color="primary"
-            v-if="!connected"
-          />
+          <q-btn label="Connect" type="submit" color="primary" v-if="!connected" />
         </div>
+
       </q-form>
 
       <!-- List all the public users. -->
-      <div class="row q-gutter-md items-center justify-center">
+      <!-- <div class="row q-gutter-md items-center justify-center">
         <div class="column text-center" v-for="user in users" :key="user.Id">
           <q-btn flat class="q-pa-none" @click="clickUserProfile(user)">
             <q-avatar
@@ -35,30 +37,8 @@
           </q-btn>
           {{ user.Name }}
         </div>
-      </div>
+      </div> -->
 
-      <!-- Also have a form for private users and to put in the password. -->
-      <q-form @submit="login" class="q-gutter-md q-my-lg" v-if="connected">
-        <q-input
-          filled
-          v-model="user"
-          label="User"
-          lazy-rules
-          :rules="[(val) => (val && val.length > 0) || 'Please type something']"
-        />
-
-        <q-input
-          filled
-          type="password"
-          v-model="pw"
-          label="Password"
-          ref="pwField"
-        />
-
-        <div>
-          <q-btn label="Login" type="submit" color="primary" />
-        </div>
-      </q-form>
     </div>
   </div>
 </template>
@@ -70,6 +50,8 @@ import { useAuthStore } from 'src/stores/authStore';
 import { ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import LoadSpinner from 'src/components/LoadSpinner.vue';
+import { SubsonicAPI } from "subsonic-api";
+import { SubSonic } from 'src/models/subsonic';
 
 const router = useRouter();
 const auth = useAuthStore();
@@ -83,7 +65,7 @@ const connected = ref(false);
 const connectError = ref(false);
 const pwField = ref<HTMLInputElement | undefined>();
 const isBusy = ref(!!server.value && !!token.value);
-let connection: JellyfinConnection | undefined;
+let connection: SubsonicAPI | undefined;
 
 // Reset everything if the user changes the server
 watch(server, () => {
@@ -91,17 +73,17 @@ watch(server, () => {
   users.value = [];
 });
 
-function clickUserProfile(selectedUser: IUser) {
-  user.value = selectedUser.Name;
-  pw.value = '';
+// function clickUserProfile(selectedUser: IUser) {
+//   user.value = selectedUser.Name;
+//   pw.value = '';
 
-  // We can go straight to submit if the user doesn't have a pw.
-  if (!selectedUser.HasPassword) {
-    void login();
-  } else if (pwField.value) {
-    pwField.value.focus();
-  }
-}
+//   // We can go straight to submit if the user doesn't have a pw.
+//   if (!selectedUser.HasPassword) {
+//     void login();
+//   } else if (pwField.value) {
+//     pwField.value.focus();
+//   }
+// }
 
 // Connect to the server and get the users.
 async function connectToServer() {
@@ -110,7 +92,7 @@ async function connectToServer() {
 
     // Prepend http if it's missing.
     if (!URL.canParse(server.value)) {
-      const httpVersion = `http://${server.value}`;
+      const httpVersion = `https://${server.value}`;
       if (URL.canParse(httpVersion)) {
         server.value = httpVersion;
       }
@@ -128,36 +110,46 @@ async function connectToServer() {
       server.value = server.value.substring(0, server.value.length - 1);
     }
 
-    connection = JellyfinConnection.create(server.value);
+    connection = new SubsonicAPI({
+      url: server.value,
+      auth: {
+        username: user.value,
+        password: pw.value,
+      },
+    });
 
-    users.value = await connection.getPublicUsers();
+    //users.value = await connection.getPublicUsers();
 
     connected.value = true;
 
+    SubSonic.setInstance(connection);
+
     // Save the server in the browser
     auth.server = server.value;
-  } finally {
-    isBusy.value = false;
-  }
-}
-
-async function login() {
-  try {
-    isBusy.value = true;
-    if (!connection) return;
-
-    JellyfinAPI.setInstance(
-      await connection.authenticate(user.value, pw.value)
-    );
-
-    if (!JellyfinAPI.instance) return;
-
-    auth.token = JellyfinAPI.instance.token;
+    console.log("yay")
     await router.push('/');
   } finally {
     isBusy.value = false;
   }
 }
+
+// async function login() {
+//   try {
+//     isBusy.value = true;
+//     if (!connection) return;
+
+//     JellyfinAPI.setInstance(
+//       await connection.authenticate(user.value, pw.value)
+//     );
+
+//     if (!JellyfinAPI.instance) return;
+
+//     auth.token = JellyfinAPI.instance.token;
+//     await router.push('/');
+//   } finally {
+//     isBusy.value = false;
+//   }
+// }
 
 if (server.value) {
   connectToServer();
