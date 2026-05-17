@@ -1,427 +1,146 @@
-import SubsonicAPI from 'subsonic-api';
-import { IBaseItem, IPlaylist, IRatingPlaylist, ISong, IUser } from './jellyitem';
-import axios, { AxiosInstance } from 'axios';
+import SubsonicAPI, { AlbumWithSongsID3, Child, SubsonicBaseResponse } from 'subsonic-api';
+import { IBackend } from './backend';
+import { ISong, IPlaylist, IAlbum, IArtist } from './interfaces';
 
-export class SubSonic {
-  static get instance() {
-    return this._instance as SubsonicAPI;
-  }
-
-  static setInstance(val: SubsonicAPI | undefined) {
-    this._instance = val;
-  }
-
-  private static _instance: SubsonicAPI | undefined;
-}
-
-/**
- * This class is used to interact with a Jellyfin server.
- * At the point you have one of these, you've already gone through authentication etc.
- */
-export class JellyfinAPI {
-  public constructor(
-    private _api: AxiosInstance,
-    private _userId: string,
-    private _serverId: string,
-    private _token: string
+export class SubSonic implements IBackend {
+  constructor(
+    private api: SubsonicAPI,
+    private session: {
+      id: string;
+      isAdmin: boolean;
+      name: string;
+      subsonicSalt: string;
+      subsonicToken: string;
+      token: string;
+      username: string;
+    },
   ) { }
 
-  static get instance() {
-    return this._instance as JellyfinAPI;
+  async getAllSongs(): Promise<ISong[]> {
+    const result = await this.api.search3({ query: '*', songCount: 5000, songOffset: 0, albumCount: 0, artistCount: 0 });
+    return result.searchResult3?.song!.map((song) => this.toSong(song)) ?? [];
   }
 
-  static setInstance(val: JellyfinAPI | undefined) {
-    this._instance = val;
+  async getPlaylistItems(id: string): Promise<ISong[]> {
+    const playlist = await this.api.getPlaylist({ id: id });
+    return playlist.playlist?.entry?.map((song) => this.toSong(song)) ?? [];
   }
 
-  get userId() {
-    return this._userId;
-  }
-
-  get token() {
-    return this._token;
-  }
-
-  get axios() {
-    return this._api;
-  }
-
-  get isAuthenticated() {
-    return !!this.token;
-  }
-
-  private ratingPlaylists: IRatingPlaylist[] = [];
-  /**
-   * Get all songs on the server.
-   * This is a recursive call, so it will get all songs in all libraries.
-   * This also creates the rating playlists if they don't exist.
-   *
-   * @returns a list of songs
-   */
-  async getAllSongs() {
-    const itemsResponse = await this.axios.get(`/Users/${this.userId}/Items`, {
-      params: {
-        IncludeItemTypes: 'Audio',
-        recursive: true,
-      },
-    });
-
-    await this.ensureRatingPlaylists();
-
-    const ratings = new Map<string, number>();
-
-    for (const playlist of this.ratingPlaylists) {
-      const playlistItems = await this.axios.get(
-        `/Playlists/${playlist.id}/Items?userId=${this.userId}`
-      );
-
-      for (const item of playlistItems.data.Items) {
-        ratings.set(item.Id, playlist.rating);
+  async getPlaylists(): Promise<IPlaylist[]> {
+    const playlists = await this.api.getPlaylists();
+    return playlists.playlists.playlist?.map(x => {
+      return {
+        id: x.id,
+        title: x.name,
+        thumbnailUrl: this.makeUrl("getCoverArt.view", { id: x.id, size: "200" }),
       }
-    }
-
-    const items = itemsResponse.data.Items as IBaseItem[];
-    const songs = items.map((x) =>
-      this.songFromItem(x, ratings.get(x.Id) ?? 0)
-    );
-    return songs;
+    }) ?? [];
   }
 
-  /**
-   * This gets or creates a playlist for every rating between 0 and 5 (exclusive).
-   * This is because setting the user rating on jellyfin isn't actually supported at the moment.
-   * It's a hacky way to get around that. :)
-   */
-  private async ensureRatingPlaylists() {
-    this.ratingPlaylists = [];
+  async updateRating(song: ISong, newRating: number): Promise<void> {
+    await this.api.setRating({ id: song.id, rating: newRating });
+    song.rating = newRating;
+    song.isFavorite = newRating === 5;
+  }
 
-    const playlists = await this.axios.get(`/Users/${this.userId}/Items`, {
-      params: {
-        IncludeItemTypes: 'Playlist',
-        recursive: true,
-      },
-    });
+  async getAlbum(id: string): Promise<IAlbum> {
+    const album = await this.api.getAlbum({ id: id });
+    return this.makeAlbum(album.album)
+  }
 
-    const ensureRatingPlaylist = async (playlistName: string) => {
-      const playlist = playlists.data.Items.find(
-        (x: IBaseItem) => x.Name === playlistName
-      );
-
-      if (!playlist) {
-        return (
-          await this.axios.post('/Playlists', {
-            Name: playlistName,
-            UserId: this.userId,
-            Ids: [],
-            MediaType: 'Audio',
-          })
-        ).data.Id;
-      } else {
-        return playlist.Id;
-      }
+  private makeAlbum(album: AlbumWithSongsID3): IAlbum {
+    return {
+      id: album.id,
+      title: album.name,
+      artist: album.artist ?? '',
+      artistId: album.artistId ?? '',
+      thumbnailUrl: this.makeUrl("getCoverArt.view", { id: album.id, size: "200" }),
+      artistUrl: '',
+      albumUrl: ''
     };
-
-    const ratingPlaylists: IRatingPlaylist[] = [];
-    for (let i = 1; i <= 4; i++) {
-      const newPlaylist: IRatingPlaylist = {
-        id: await ensureRatingPlaylist(`Rating_${i}`),
-        rating: i,
-      };
-
-      ratingPlaylists.push(newPlaylist);
-    }
-
-    this.ratingPlaylists = ratingPlaylists;
   }
 
-  /**
-   * This sets the rating of this song on the server. It uses playlists to do this because setting a user rating isn't supported yet.
-   *
-   * @param song the song to rate
-   * @param rating the rating to give the song
-   */
-  async updateRating(song: ISong, rating: number) {
-    const currentPlaylist = this.ratingPlaylists.find(
-      (x) => x.rating === song.rating
-    );
+  async getAlbumSongs(id: string): Promise<ISong[]> {
+    const album = await this.api.getAlbum({ id: id });
+    return album.album.song?.map((song) => this.toSong(song)) ?? [];
+  }
 
-    const newPlaylist = this.ratingPlaylists.find((x) => x.rating === rating);
+  async getArtist(id: string): Promise<IArtist> {
+    const artistResponse = await this.api.getArtist({ id: id });
+    const artist = artistResponse.artist;
 
-    if (currentPlaylist) {
-      await this.removeFromPlaylist(song, currentPlaylist.id);
+    return {
+      id: artist.id,
+      name: artist.name,
+      thumbnailUrl: this.makeUrl("getCoverArt.view", { id: artist.id, size: "200" }),
+      logoUrl: '',
+      artistUrl: ''
     }
+  }
 
-    if (song.isFavorite && rating < 5) {
-      // If the song was previously rated as a favorite, we need to remove it from the favorites list
-      if (song.isFavorite) {
-        await this.setFavorited(song, false);
+  async getArtistAlbums(id: string): Promise<IAlbum[]> {
+    const artistResponse = await this.api.getArtist({ id: id });
+    return artistResponse.artist.album?.map((album) => this.makeAlbum(album)) ?? [];
+  }
+
+  makeUrl(method: string, params?: Record<string, unknown>) {
+    let base = this.api.baseURL();
+    if (!base.endsWith("rest/")) base += "rest/";
+    base += method;
+
+    const url = new URL(base);
+    url.searchParams.set("v", "1.16.1");
+    url.searchParams.set("c", "subsonic-api");
+    url.searchParams.set("f", "json");
+    url.searchParams.set("u", this.session.username);
+    url.searchParams.set("t", this.session.subsonicToken);
+    url.searchParams.set("s", this.session.subsonicSalt);
+
+    if (params) {
+      for (const [key, value] of Object.entries(params)) {
+        if (typeof value === "undefined" || value === null) continue;
+        if (Array.isArray(value)) {
+          for (const v of value) {
+            url.searchParams.append(key, v.toString());
+          }
+        } else {
+          url.searchParams.set(key, value.toString());
+        }
       }
     }
 
+    return url.toString();
+  }
+
+  static async tryConnect(server: string, username: string, password: string): Promise<SubSonic | undefined> {
     try {
-      if (newPlaylist) {
-        await this.addToPlaylist(song, newPlaylist.id);
-      } else if (rating == 5) {
-        // If the song is being rated as a favorite, we need to add it to the favorites list
-        await this.setFavorited(song, true);
-      }
+      const connection = new SubsonicAPI({
+        url: server,
+        auth: {
+          username: username,
+          password: password,
+        },
+      });
 
-      song.rating = rating;
-    } catch { }
-  }
-
-  /**
-   * This sets the song as a favorite or not on the server.
-   *
-   * @param song the song to favorite
-   * @param shouldBeFavorite whether the song should be favorited
-   */
-  async setFavorited(song: ISong, shouldBeFavorite: boolean) {
-    if (shouldBeFavorite) {
-      await this.axios.post(`/Users/${this.userId}/FavoriteItems/${song.id}`);
-      song.isFavorite = true;
-    } else {
-      await this.axios.delete(`/Users/${this.userId}/FavoriteItems/${song.id}`);
-      song.isFavorite = false;
+      return new SubSonic(connection, await connection.navidromeSession());
+    } catch (e) {
+      return undefined;
     }
   }
 
-  /**
-   * This sets the song as liked or not on the server.
-   *
-   * @param song the song to like
-   * @param shouldBeLiked whether the song should be liked
-   */
-  async setLiked(song: ISong, shouldBeLiked: boolean) {
-    await this.axios.post(
-      `/Users/${this.userId}/Items/${song.id}/Rating?likes=${shouldBeLiked}`
-    );
-    song.isLiked = shouldBeLiked;
-  }
-
-  /**
-   * This marks the song as played on the server.
-   *
-   * @param song the song to mark as played
-   */
-  async markPlayed(song: ISong) {
-    const currentDate = new Date();
-
-    // Format the date in ISO 8601 format
-    const isoDateTime = currentDate.toISOString();
-
-    await this.axios.post(
-      `/Users/${this.userId}/PlayedItems/${song.id}?datePlayed=${isoDateTime}`
-    );
-  }
-
-  async getPlaylists() {
-    const playlists = await this.axios.get(`/Users/${this.userId}/Items`, {
-      params: {
-        IncludeItemTypes: 'Playlist',
-        recursive: true,
-        fields: 'Path,ChildCount,Container',
-      },
-    });
-
-    return (playlists.data.Items as IBaseItem[])
-      .filter(x => !x.Name.startsWith('Rating_') && !x.Name.startsWith('JellyTube') && x.Path?.endsWith('.m3u') != true)
-      .map(x => this.playlistFromItem(x));
-  }
-
-  playlistFromItem(item: IBaseItem): IPlaylist {
-    let thumbnailUrl = '';
-
-    // Fallback to album image if no primary image is available
-    if (item.ImageTags.Primary) {
-      thumbnailUrl = this.makeImageUrl(
-        item.Id,
-        'Primary',
-        item.ImageTags.Primary
-      );
-    }
-
+  toSong(song: Child): ISong {
     return {
-      id: item.Id,
-      title: item.Name,
-      thumbnailUrl: thumbnailUrl,
-    };
-  }
-
-  async getPlaylistItems(id: string) {
-    const albumSongs = await this.axios.get(
-      `/Playlists/${id}/Items`
-    );
-
-    return albumSongs.data.Items as IBaseItem[];
-  }
-
-  /**
-   * Adds a song to a playlist.
-   *
-   * @param song the song to add
-   * @param playlistId the playlist to add the song to
-   */
-  async addToPlaylist(song: ISong, playlistId: string) {
-    await this.axios.post(
-      `/Playlists/${playlistId}/Items?ids=${song.id}&userId=${this.userId}`
-    );
-  }
-
-  /**
-   * Removes a song from a playlist.
-   *
-   * @param song the song to remove
-   * @param playlistId the playlist to remove the song from
-   */
-  async removeFromPlaylist(song: ISong, playlistId: string) {
-    // Annoyingly, to remove an item you don't use the item ID, but an "entryId"
-    // So we gotta go find the entry id for this song first.
-    const playlistItems = await this.axios.get(
-      `/Playlists/${playlistId}/Items?userId=${this.userId}`
-    );
-
-    const entryId = playlistItems.data.Items.find(
-      (x: IBaseItem) => x.Id === song.id
-    ).PlaylistItemId;
-
-    await this.axios.delete(
-      `/Playlists/${playlistId}/Items?EntryIds=${entryId}`
-    );
-  }
-
-  /**
-   * Gets an album and all the songs for the album.
-   *
-   * @param id the album id
-   * @returns the album and all the songs in it
-   */
-  async getAlbumAndSongs(id: string) {
-    const albumResponse = await this.axios.get(
-      `/Users/${this.userId}/Items?ids=${id}`
-    );
-    const albumSongs = await this.axios.get(
-      `/Users/${this.userId}/Items?parentId=${id}`
-    );
-    albumResponse.data.Items[0].Children = albumSongs.data.Items;
-    return albumResponse.data.Items[0];
-  }
-
-  /**
-   * Gets an artist and all the albums for the artist.
-   *
-   * @param id the artist id
-   * @returns the artist and all the albums in it
-   */
-  async getArtistAlbums(id: string) {
-    const artistResponse = await this.axios.get(
-      `/Users/${this.userId}/Items?ids=${id}`
-    );
-    const artistAlbums = await this.axios.get(`/Users/${this.userId}/Items`, {
-      params: {
-        ParentId: id,
-        IncludeItemTypes: 'Album',
-      },
-    });
-    artistResponse.data.Items[0].Children = artistAlbums.data.Items;
-    return artistResponse.data.Items[0];
-  }
-
-  /**
-   * Makes the URL for the primary image of an item.
-   *
-   * @param item the item to get the primary image for
-   * @returns an url
-   */
-  makePrimaryImageUrl(item: IBaseItem) {
-    return this.makeImageUrl(item.Id, 'Primary', item.ImageTags.Primary);
-  }
-
-  /**
-   * Makes the URL for the logo image of an item.
-   *
-   * @param item the item to get the logo image for
-   * @returns an url
-   */
-  makeLogoImageUrl(item: IBaseItem) {
-    return this.makeImageUrl(item.Id, 'Logo', item.ImageTags.Logo);
-  }
-
-  /**
-   * Makes the URL for an image of an item.
-   *
-   * @param itemId the item id
-   * @param type the type of image
-   * @param tag the tag of the image
-   * @returns an url
-   */
-  makeImageUrl(itemId: string, type: string, tag?: string) {
-    const tagParam = tag ? `&tag=${tag}` : '';
-    return `${this.axios.getUri()}/Items/${itemId}/Images/${type}?api_key=${this.token
-      }${tagParam}`;
-  }
-
-  /**
-   * Makes an URL that takes the user to the page for a certain item on the server.
-   *
-   * @param itemId the item id
-   * @returns an url
-   */
-  makeJellyfinItemUrl(itemId: string) {
-    return `${this.axios.getUri()}/web/index.html#!/details?id=${itemId}&serverId=${this._serverId
-      }`;
-  }
-
-  /**
-   * Converts an item to an ISong
-   *
-   * @param item the item to convert
-   * @param rating the rating of the song, this is because the rating isn't stored on the item
-   * @returns an ISong
-   */
-  songFromItem(item: IBaseItem, rating?: number): ISong {
-    let thumbnailUrl = '';
-
-    // Fallback to album image if no primary image is available
-    if (item.ImageTags.Primary) {
-      thumbnailUrl = this.makeImageUrl(
-        item.Id,
-        'Primary',
-        item.ImageTags.Primary
-      );
-    } else if (item.AlbumId && item.AlbumPrimaryImageTag) {
-      thumbnailUrl = this.makeImageUrl(
-        item.AlbumId,
-        'Primary',
-        item.AlbumPrimaryImageTag
-      );
+      id: song.id,
+      title: song.title,
+      album: song.album,
+      albumId: song.albumId,
+      artist: song.artist ?? '',
+      artistId: song.artistId ?? '',
+      url: this.makeUrl("stream.view", { id: song.id, format: "raw" }),
+      thumbnailUrl: this.makeUrl("getCoverArt.view", { id: song.id, size: "200" }),
+      isFavorite: song.userRating === 5,
+      isLiked: false,
+      rating: song.userRating ?? 0,
     }
-
-    if (item.UserData.IsFavorite) {
-      rating = 5;
-    }
-
-    const artistItem = item.ArtistItems[0] ?? item.AlbumArtists[0];
-
-    return {
-      id: item.Id,
-      title: item.Name,
-      album: item.Album,
-      albumId: item.AlbumId,
-      artist: artistItem?.Name ?? 'Unknown',
-      artistId: artistItem?.Id ?? '',
-      url: this.getAudioStreamUrl(item.Id),
-      thumbnailUrl: thumbnailUrl,
-      isFavorite: item.UserData.IsFavorite,
-      isLiked: item.UserData.Likes,
-      rating: rating ?? 0,
-    };
   }
-
-  getAudioStreamUrl(itemId: string) {
-    return `${this.axios.getUri()}/Audio/${itemId}/universal?ApiKey=${this._token
-      }`;
-  }
-
-  private static _instance: JellyfinAPI | undefined;
 }

@@ -7,9 +7,9 @@ import {
 } from 'vue-router';
 
 import routes from './routes';
-import { JellyfinAPI, JellyfinConnection } from 'src/models/jellyfin';
 import { LocalStorage } from 'quasar';
 import { Backend } from 'src/models/backend';
+import { SubSonic } from 'src/models/subsonic';
 
 /*
  * If not building with SSR mode, you can
@@ -38,20 +38,25 @@ export default route(function (/* { store, ssrContext } */) {
   });
 
   Router.beforeEach(async (to, from, next) => {
-    if (!JellyfinAPI.instance) {
+    if (!Backend.instance) {
       const server = LocalStorage.getItem<string>('login_server') ?? '';
       const token = LocalStorage.getItem<string>('login_token') ?? '';
+      const pw = LocalStorage.getItem<string>('login_pw') ?? '';
+
       if (server && token) {
-        const connection = JellyfinConnection.create(server);
-        const reloginApi = await connection.authenticateWithToken(token);
-        if (reloginApi) {
-          JellyfinAPI.setInstance(reloginApi);
-          Backend.setInstance(reloginApi);
+        // const connection = JellyfinConnection.create(server);
+        // const reloginApi = await connection.authenticateWithToken(token);
+
+        const connection = await SubSonic.tryConnect(server, token, pw);
+
+        if (connection) {
+          //JellyfinAPI.setInstance(reloginApi);
+          Backend.setInstance(connection);
         }
       }
     }
 
-    if (!JellyfinAPI.instance && to.meta.requiresAuth) {
+    if (!Backend.instance && to.meta.requiresAuth) {
       // Redirect to the login page
       next('/login');
     } else {

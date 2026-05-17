@@ -18,7 +18,7 @@
         <q-input filled type="password" v-model="pw" label="Password" ref="pwField" />
 
         <div>
-          <q-btn label="Connect" type="submit" color="primary" v-if="!connected" />
+          <q-btn label="Connect" type="submit" color="primary" />
         </div>
 
       </q-form>
@@ -60,7 +60,7 @@ const connected = ref(false);
 const connectError = ref(false);
 const pwField = ref<HTMLInputElement | undefined>();
 const isBusy = ref(!!server.value && !!token.value);
-let connection: SubsonicAPI | undefined;
+let connection: SubSonic | undefined;
 
 // Reset everything if the user changes the server
 watch(server, () => {
@@ -105,23 +105,18 @@ async function connectToServer() {
       server.value = server.value.substring(0, server.value.length - 1);
     }
 
-    connection = new SubsonicAPI({
-      url: server.value,
-      auth: {
-        username: user.value,
-        password: pw.value,
-      },
-    });
+    connection = await SubSonic.tryConnect(server.value, user.value, pw.value);
 
     //users.value = await connection.getPublicUsers();
 
     connected.value = true;
 
-    SubSonic.setInstance(connection);
+    Backend.setInstance(connection);
 
     // Save the server in the browser
     auth.server = server.value;
-    console.log("yay")
+    auth.token = user.value;
+    auth.pw = pw.value;
     await router.push('/');
   } finally {
     isBusy.value = false;
