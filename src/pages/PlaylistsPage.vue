@@ -21,11 +21,11 @@
 
 <script setup lang="ts">
 import { injectBookPlayer } from 'src/models/bookplayer';
-import { JellyfinAPI } from 'src/models/jellyfin';
-import { IPlaylist, ISong } from 'src/models/jellyitem';
+import { IPlaylist, ISong } from 'src/models/interfaces';
 import { useSongLibrary } from 'src/stores/songlibrary';
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
+import { Backend } from 'src/models/backend';
 
 const songLibrary = useSongLibrary();
 const bookPlayer = injectBookPlayer();
@@ -33,12 +33,12 @@ const router = useRouter();
 
 const playlists = ref<IPlaylist[]>([])
 async function load() {
-  playlists.value = await JellyfinAPI.instance.getPlaylists();
+  playlists.value = await Backend.instance.getPlaylists();
 }
 
 async function play(playlist: IPlaylist) {
-  const items = await JellyfinAPI.instance.getPlaylistItems(playlist.id);
-  const songs = items.map(x => songLibrary.lookup.get(x.Id)).filter(x => x) as ISong[];
+  const items = await Backend.instance.getPlaylistItems(playlist.id);
+  const songs = items.map(x => songLibrary.lookup.get(x.id)).filter(x => x) as ISong[];
 
   await bookPlayer.updatePlaylist(songs, false);
   await bookPlayer.player.skip_to_track(0);

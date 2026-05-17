@@ -12,12 +12,7 @@
         <q-input filled v-model="server" label="Server" />
         <span class="text-red" v-if="connectError">failed to connect</span>
         <div>
-          <q-btn
-            label="Connect"
-            type="submit"
-            color="primary"
-            v-if="!connected"
-          />
+          <q-btn label="Connect" type="submit" color="primary" v-if="!connected" />
         </div>
       </q-form>
 
@@ -25,13 +20,7 @@
       <div class="row q-gutter-md items-center justify-center">
         <div class="column text-center" v-for="user in users" :key="user.Id">
           <q-btn flat class="q-pa-none" @click="clickUserProfile(user)">
-            <q-avatar
-              rounded
-              size="75px"
-              icon="person"
-              color="primary"
-              text-color="white"
-            />
+            <q-avatar rounded size="75px" icon="person" color="primary" text-color="white" />
           </q-btn>
           {{ user.Name }}
         </div>
@@ -39,21 +28,10 @@
 
       <!-- Also have a form for private users and to put in the password. -->
       <q-form @submit="login" class="q-gutter-md q-my-lg" v-if="connected">
-        <q-input
-          filled
-          v-model="user"
-          label="User"
-          lazy-rules
-          :rules="[(val) => (val && val.length > 0) || 'Please type something']"
-        />
+        <q-input filled v-model="user" label="User" lazy-rules
+          :rules="[(val) => (val && val.length > 0) || 'Please type something']" />
 
-        <q-input
-          filled
-          type="password"
-          v-model="pw"
-          label="Password"
-          ref="pwField"
-        />
+        <q-input filled type="password" v-model="pw" label="Password" ref="pwField" />
 
         <div>
           <q-btn label="Login" type="submit" color="primary" />
@@ -70,6 +48,7 @@ import { useAuthStore } from 'src/stores/authStore';
 import { ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import LoadSpinner from 'src/components/LoadSpinner.vue';
+import { Backend } from 'src/models/backend';
 
 const router = useRouter();
 const auth = useAuthStore();
@@ -151,6 +130,7 @@ async function login() {
     );
 
     if (!JellyfinAPI.instance) return;
+    Backend.setInstance(JellyfinAPI.instance);
 
     auth.token = JellyfinAPI.instance.token;
     await router.push('/');

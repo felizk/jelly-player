@@ -82,13 +82,14 @@ import { injectBookPlayer } from 'src/models/bookplayer';
 import BookPlayer from 'components/BookPlayer.vue';
 import fuzzysort from 'fuzzysort';
 import { useSongLibrary } from 'src/stores/songlibrary';
-import { ISong } from 'src/models/jellyitem';
+import { ISong } from 'src/models/interfaces';
 import { JellyfinAPI } from 'src/models/jellyfin';
 import { useAuthStore } from 'src/stores/authStore';
 import { useRouter } from 'vue-router';
 import { useSettings } from 'src/stores/settingsStore';
 import SongItem from 'src/components/SongItem.vue';
 import LoadSpinner from 'src/components/LoadSpinner.vue';
+import { Backend } from 'src/models/backend';
 
 const settings = useSettings();
 let bookPlayer = injectBookPlayer();
@@ -161,6 +162,7 @@ window.onkeyup = windowKey;
 
 function signOut() {
   JellyfinAPI.setInstance(undefined);
+  Backend.setInstance(undefined);
   auth.reset();
   router.push('/login');
 }
@@ -169,7 +171,7 @@ const isBusy = ref(true);
 async function load() {
   try {
     const lib = useSongLibrary();
-    lib.setSongs(await JellyfinAPI.instance.getAllSongs());
+    lib.setSongs(await Backend.instance.getAllSongs());
     void bookPlayer.rerollSongs();
   } finally {
     isBusy.value = false;

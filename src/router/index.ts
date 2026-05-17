@@ -9,6 +9,7 @@ import {
 import routes from './routes';
 import { JellyfinAPI, JellyfinConnection } from 'src/models/jellyfin';
 import { LocalStorage } from 'quasar';
+import { Backend } from 'src/models/backend';
 
 /*
  * If not building with SSR mode, you can
@@ -23,8 +24,8 @@ export default route(function (/* { store, ssrContext } */) {
   const createHistory = process.env.SERVER
     ? createMemoryHistory
     : process.env.VUE_ROUTER_MODE === 'history'
-    ? createWebHistory
-    : createWebHashHistory;
+      ? createWebHistory
+      : createWebHashHistory;
 
   const Router = createRouter({
     scrollBehavior: () => ({ left: 0, top: 0 }),
@@ -45,6 +46,7 @@ export default route(function (/* { store, ssrContext } */) {
         const reloginApi = await connection.authenticateWithToken(token);
         if (reloginApi) {
           JellyfinAPI.setInstance(reloginApi);
+          Backend.setInstance(reloginApi);
         }
       }
     }

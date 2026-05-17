@@ -1,4 +1,6 @@
-import { IBaseItem, IPlaylist, IRatingPlaylist, ISong, IUser } from './jellyitem';
+import { IBackend } from './backend';
+import { IAlbum, IArtist, IPlaylist, IRatingPlaylist, ISong } from './interfaces';
+import { IBaseItem, IUser } from './jellyitem';
 import axios, { AxiosInstance } from 'axios';
 
 /**
@@ -116,7 +118,7 @@ export class JellyfinConnection {
  * This class is used to interact with a Jellyfin server.
  * At the point you have one of these, you've already gone through authentication etc.
  */
-export class JellyfinAPI {
+export class JellyfinAPI implements IBackend {
   public constructor(
     private _api: AxiosInstance,
     private _userId: string,
@@ -351,7 +353,7 @@ export class JellyfinAPI {
       `/Playlists/${id}/Items`
     );
 
-    return albumSongs.data.Items as IBaseItem[];
+    return albumSongs.data.Items.map((x: IBaseItem) => this.songFromItem(x));
   }
 
   /**
@@ -389,40 +391,44 @@ export class JellyfinAPI {
   }
 
   /**
-   * Gets an album and all the songs for the album.
-   *
-   * @param id the album id
-   * @returns the album and all the songs in it
-   */
-  async getAlbumAndSongs(id: string) {
-    const albumResponse = await this.axios.get(
-      `/Users/${this.userId}/Items?ids=${id}`
-    );
-    const albumSongs = await this.axios.get(
-      `/Users/${this.userId}/Items?parentId=${id}`
-    );
-    albumResponse.data.Items[0].Children = albumSongs.data.Items;
-    return albumResponse.data.Items[0];
-  }
-
-  /**
    * Gets an artist and all the albums for the artist.
    *
    * @param id the artist id
    * @returns the artist and all the albums in it
    */
-  async getArtistAlbums(id: string) {
+  async getArtistAlbums(id: string): Promise<IAlbum[]> {
+    const artistAlbums = await this.axios.get(`/Users/${this.userId}/Items`, {
+      params: {
+        AlbumArtistIds: id,
+        recursive: true,
+        IncludeItemTypes: 'MusicAlbum',
+      },
+    });
+
+    return artistAlbums.data.Items.map((x: IBaseItem) => this.albumFromItem(x));
+  }
+
+  async getAlbum(id: string): Promise<IAlbum> {
+    const albumResponse = await this.axios.get(
+      `/Users/${this.userId}/Items?ids=${id}`
+    );
+
+    return this.albumFromItem(albumResponse.data.Items[0]);
+  }
+  async getAlbumSongs(id: string): Promise<ISong[]> {
+    const albumSongs = await this.axios.get(
+      `/Users/${this.userId}/Items?parentId=${id}`
+    );
+
+    return albumSongs.data.Items.map((x: IBaseItem) => this.songFromItem(x));
+
+  }
+  async getArtist(id: string): Promise<IArtist> {
     const artistResponse = await this.axios.get(
       `/Users/${this.userId}/Items?ids=${id}`
     );
-    const artistAlbums = await this.axios.get(`/Users/${this.userId}/Items`, {
-      params: {
-        ParentId: id,
-        IncludeItemTypes: 'Album',
-      },
-    });
-    artistResponse.data.Items[0].Children = artistAlbums.data.Items;
-    return artistResponse.data.Items[0];
+
+    return this.artistFromItem(artistResponse.data.Items[0]);
   }
 
   /**
@@ -513,6 +519,28 @@ export class JellyfinAPI {
       isFavorite: item.UserData.IsFavorite,
       isLiked: item.UserData.Likes,
       rating: rating ?? 0,
+    };
+  }
+
+  albumFromItem(item: IBaseItem): IAlbum {
+    return {
+      id: item.Id,
+      title: item.Name,
+      artist: item.ArtistItems[0]?.Name ?? 'Unknown',
+      artistId: item.ArtistItems[0]?.Id ?? '',
+      artistUrl: item.ArtistItems[0] ? this.makeJellyfinItemUrl(item.ArtistItems[0].Id) : '',
+      albumUrl: this.makeJellyfinItemUrl(item.Id),
+      thumbnailUrl: item.ImageTags.Primary ? this.makeImageUrl(item.Id, 'Primary', item.ImageTags.Primary) : '',
+    };
+  }
+
+  artistFromItem(item: IBaseItem): IArtist {
+    return {
+      id: item.Id,
+      name: item.Name,
+      thumbnailUrl: item.ImageTags.Primary ? this.makeImageUrl(item.Id, 'Primary', item.ImageTags.Primary) : '',
+      logoUrl: item.ImageTags.Logo ? this.makeImageUrl(item.Id, 'Logo', item.ImageTags.Logo) : '',
+      artistUrl: this.makeJellyfinItemUrl(item.Id),
     };
   }
 

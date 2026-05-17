@@ -11,9 +11,9 @@ import {
   ITrackPosition,
 } from './audioplayer';
 import { AudioPlayerPlugin, setHtmlAudioPlayer } from 'src/plugins/audioplayer';
-import { ISong } from './jellyitem';
 import { useSongLibrary } from 'src/stores/songlibrary';
 import { useSettings } from 'src/stores/settingsStore';
+import { ISong } from './interfaces';
 
 export interface IBookPlayer {
   state: Ref<IAudioPlayerState>;

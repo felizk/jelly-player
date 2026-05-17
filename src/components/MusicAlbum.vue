@@ -63,39 +63,16 @@
       <q-avatar size="150px" class="q-mb-lg" rounded v-if="thumbnailUrl">
         <img :src="thumbnailUrl" />
       </q-avatar>
-      <q-avatar
-        class="text-white q-mb-lg"
-        icon="music_note"
-        size="150px"
-        color="secondary"
-        rounded
-        v-else
-      />
+      <q-avatar class="text-white q-mb-lg" icon="music_note" size="150px" color="secondary" rounded v-else />
 
       <div>
         <h4 class="q-ma-lg items-center">
           {{ songs[0]?.album }}
-          <q-btn
-            round
-            flat
-            size="sm"
-            icon="open_in_new"
-            color="primary"
-            :href="jellyfinUrl"
-            target="_blank"
-          />
+          <q-btn round flat size="sm" icon="open_in_new" color="primary" :href="jellyfinUrl" target="_blank" />
         </h4>
         <h5 class="q-ma-lg">
           {{ songs[0]?.artist }}
-          <q-btn
-            round
-            flat
-            size="sm"
-            icon="open_in_new"
-            color="primary"
-            :href="artistUrl"
-            target="_blank"
-          />
+          <q-btn round flat size="sm" icon="open_in_new" color="primary" :href="artistUrl" target="_blank" />
         </h5>
       </div>
     </div>
@@ -104,14 +81,8 @@
 
     <!-- Song list -->
     <q-list>
-      <song-item
-        v-for="(song, index) in songs"
-        :key="index"
-        :song="song"
-        :active="bookPlayer.currentSong.value == song"
-        @playSong="playSong(index)"
-        :showRating="true"
-      >
+      <song-item v-for="(song, index) in songs" :key="index" :song="song" :active="bookPlayer.currentSong.value == song"
+        @playSong="playSong(index)" :showRating="true">
       </song-item>
     </q-list>
   </div>
@@ -120,10 +91,10 @@
 <script setup lang="ts">
 import { injectBookPlayer } from 'src/models/bookplayer';
 import { ref, watch } from 'vue';
-import { JellyfinAPI } from 'src/models/jellyfin';
-import { IArtistItem, IBaseItem, ISong } from 'src/models/jellyitem';
 import { useSongLibrary } from 'src/stores/songlibrary';
 import SongItem from 'src/components/SongItem.vue';
+import { IArtist, ISong } from 'src/models/interfaces';
+import { Backend } from 'src/models/backend';
 
 export interface MusicAlbumProps {
   albumId: string;
@@ -133,10 +104,10 @@ const props = defineProps<MusicAlbumProps>();
 
 // We emit an event when the album loads, primarily to populate breadcrumbs on other pages
 const emit = defineEmits<{
-  (e: 'albumLoaded', artist: IArtistItem, albumName: string): void;
+  (e: 'albumLoaded', artist: IArtist, albumName: string): void;
 }>();
 
-const api = JellyfinAPI.instance;
+const api = Backend.instance;
 const songLibrary = useSongLibrary();
 const bookPlayer = injectBookPlayer();
 const isBusy = ref(true);
@@ -154,22 +125,23 @@ async function playSong(songIndex: number) {
 async function loadAlbum() {
   try {
     isBusy.value = true;
-    const albumData = (await api.getAlbumAndSongs(
+    const albumData = (await api?.getAlbum(
       props.albumId as string
-    )) as IBaseItem & { Children: IBaseItem[] };
+    ));
 
-    emit('albumLoaded', albumData.ArtistItems[0], albumData.Name ?? '');
+    const songsResponse = await api?.getAlbumSongs(albumData.id);
+    const artist = await api?.getArtist(albumData.artistId);
 
-    songs.value = albumData.Children.map((x: IBaseItem) =>
-      songLibrary.lookup.get(x.Id)
+    emit('albumLoaded', artist, albumData.title ?? '');
+
+    songs.value = songsResponse.map(x =>
+      songLibrary.lookup.get(x.id)
     ).filter((x) => x) as ISong[];
 
-    thumbnailUrl.value = albumData.ImageTags.Primary
-      ? api.makePrimaryImageUrl(albumData)
-      : '';
+    thumbnailUrl.value = albumData.thumbnailUrl
 
-    jellyfinUrl.value = api.makeJellyfinItemUrl(albumData.Id);
-    artistUrl.value = api.makeJellyfinItemUrl(albumData.ArtistItems[0].Id);
+    jellyfinUrl.value = albumData.albumUrl;
+    artistUrl.value = artist.artistUrl;
 
     // bookPlayer.setPlaylist(album.Songs);
   } catch (e) {

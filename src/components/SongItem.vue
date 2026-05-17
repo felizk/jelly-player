@@ -37,8 +37,8 @@
 </template>
 
 <script setup lang="ts">
-import { JellyfinAPI } from 'src/models/jellyfin';
-import { ISong } from 'src/models/jellyitem';
+import { Backend } from 'src/models/backend';
+import { ISong } from 'src/models/interfaces';
 
 export interface SongItemProps {
   song: ISong;
@@ -54,7 +54,7 @@ const emit = defineEmits<{
 }>();
 
 function updateRating(newRating: number) {
-  JellyfinAPI.instance.updateRating(props.song, newRating);
+  Backend.instance.updateRating(props.song, newRating);
 }
 </script>
 

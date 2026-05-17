@@ -5,7 +5,7 @@
 // You can generalize this, by mapping each item to a range across a continum.
 // Think about a lucky spinning wheel that has pins. You spin the wheel, if the section for A is twice as big as for B, then twice the chance to pick it at random.
 
-import { ISong } from './jellyitem';
+import { ISong } from './interfaces';
 
 export interface IWeightedGroup {
   name: string;

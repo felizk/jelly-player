@@ -9,14 +9,7 @@
         <q-breadcrumbs-el v-if="artistName" :label="artistName" icon="groups" />
       </q-breadcrumbs>
 
-      <q-img
-        v-if="logoUrl"
-        :src="logoUrl"
-        :alt="artistName"
-        class="q-mb-lg"
-        height="150px"
-        fit="contain"
-      />
+      <q-img v-if="logoUrl" :src="logoUrl" :alt="artistName" class="q-mb-lg" height="150px" fit="contain" />
 
       <div v-for="(albumId, index) in albumIds" :key="index">
         <MusicAlbum :albumId="albumId" class="q-mb-xl" />
@@ -26,14 +19,13 @@
 </template>
 
 <script setup lang="ts">
-import { IBaseItem } from 'src/models/jellyitem';
-import { JellyfinAPI } from 'src/models/jellyfin';
 import { ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import LoadSpinner from 'src/components/LoadSpinner.vue';
 import MusicAlbum from 'src/components/MusicAlbum.vue';
+import { Backend } from 'src/models/backend';
 
-const api = JellyfinAPI.instance;
+const api = Backend.instance;
 const route = useRoute();
 const id = route.params.id;
 
@@ -47,24 +39,21 @@ async function loadArtist() {
   try {
     isBusy.value = true;
 
-    const artistData = (await api.getArtistAlbums(
-      id as string
-    )) as IBaseItem & { Children: IBaseItem[] };
+    const artist = await api.getArtist(id as string);
+    const albums = await api.getArtistAlbums(artist.id);
 
     // Sort the albums by name
-    albumIds.value = artistData.Children.sort((a, b) =>
-      a.Name.localeCompare(b.Name)
-    ).map((a) => a.Id);
+    albumIds.value = albums.sort((a, b) =>
+      a.title.localeCompare(b.title)
+    ).map((a) => a.id);
 
-    artistName.value = artistData.Name;
+    artistName.value = artist.name;
 
     // Set thumbnail url
-    logoUrl.value = artistData.ImageTags.Logo
-      ? api.makeLogoImageUrl(artistData)
-      : '';
+    logoUrl.value = artist.logoUrl
 
     // Set external url to Jellyfin
-    jellyfinUrl.value = api.makeJellyfinItemUrl(artistData.Id);
+    jellyfinUrl.value = artist.artistUrl;
   } catch (e) {
     console.error(e);
   } finally {

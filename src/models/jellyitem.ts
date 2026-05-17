@@ -32,27 +32,3 @@ export interface IUser {
   HasPassword: boolean;
 }
 
-export interface ISong {
-  id: string;
-  title: string;
-  album?: string;
-  albumId?: string;
-  artist: string;
-  artistId: string;
-  url: string;
-  thumbnailUrl: string;
-  isFavorite: boolean;
-  isLiked: boolean;
-  rating: number;
-}
-
-export interface IRatingPlaylist {
-  id: string;
-  rating: number;
-}
-
-export interface IPlaylist {
-  id: string;
-  title: string;
-  thumbnailUrl: string;
-}
