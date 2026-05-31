@@ -5,6 +5,7 @@ export interface IBackend {
     getPlaylistItems(id: string): Promise<ISong[]>;
     getPlaylists(): Promise<IPlaylist[]>;
     updateRating(song: ISong, newRating: number): Promise<void>;
+    scrobble(song: ISong): Promise<void>;
     getAlbum(id: string): Promise<IAlbum>;
     getAlbumSongs(id: string): Promise<ISong[]>;
     getArtist(id: string): Promise<IArtist>;

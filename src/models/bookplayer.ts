@@ -2,7 +2,7 @@
 // This code was also taken from my older audiobook player
 // There are a acouple of layers going on because the book player had an android version as well using capacitor.
 
-import { InjectionKey, provide, ref, Ref, shallowRef, watchEffect } from 'vue';
+import { InjectionKey, provide, ref, Ref, shallowRef, watch, watchEffect } from 'vue';
 import { injectStrict } from 'src/compositionHelpers';
 import {
   HtmlAudioPlayer,
@@ -14,6 +14,7 @@ import { AudioPlayerPlugin, setHtmlAudioPlayer } from 'src/plugins/audioplayer';
 import { useSongLibrary } from 'src/stores/songlibrary';
 import { useSettings } from 'src/stores/settingsStore';
 import { ISong } from './interfaces';
+import { Backend } from './backend';
 
 export interface IBookPlayer {
   state: Ref<IAudioPlayerState>;
@@ -81,6 +82,53 @@ export function setupBookPlayer(htmlPlayer: Ref<HTMLAudioElement | null>) {
           });
         }
       }
+    }
+  });
+
+  let playStartTime: number | null = null;
+  let accumulatedMs = 0;
+  let scrobbleTimeout: ReturnType<typeof setTimeout> | null = null;
+  let scrobbledSongId: string | null = null;
+
+  function clearScrobbleTimeout() {
+    if (scrobbleTimeout !== null) {
+      clearTimeout(scrobbleTimeout);
+      scrobbleTimeout = null;
+    }
+  }
+
+  function scheduleScrobble(song: ISong) {
+    const remaining = 30_000 - accumulatedMs;
+    scrobbleTimeout = setTimeout(() => {
+      scrobbledSongId = song.id;
+      void Backend.instance?.scrobble(song);
+    }, remaining);
+  }
+
+  watch(currentSong, (song) => {
+    clearScrobbleTimeout();
+    playStartTime = null;
+    accumulatedMs = 0;
+
+    if (song && state.value.isPlaying && scrobbledSongId !== song.id) {
+      playStartTime = Date.now();
+      scheduleScrobble(song);
+    }
+  });
+
+  watch(() => state.value.isPlaying, (isPlaying) => {
+    const song = currentSong.value;
+    if (!song || scrobbledSongId === song.id) return;
+
+    if (isPlaying) {
+      playStartTime = Date.now();
+      scheduleScrobble(song);
+    } else {
+      if (playStartTime !== null) {
+        accumulatedMs += Date.now() - playStartTime;
+        playStartTime = null;
+      }
+      clearScrobbleTimeout();
     }
   });
 

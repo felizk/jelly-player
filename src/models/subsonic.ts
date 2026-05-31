@@ -43,6 +43,10 @@ export class SubSonic implements IBackend {
     song.isFavorite = newRating === 5;
   }
 
+  async scrobble(song: ISong): Promise<void> {
+    await this.api.scrobble({ id: song.id, submission: true });
+  }
+
   async getAlbum(id: string): Promise<IAlbum> {
     const album = await this.api.getAlbum({ id: id });
     return this.makeAlbum(album.album)
