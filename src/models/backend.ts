@@ -1,4 +1,4 @@
-import { IAlbum, IArtist, IPlaylist, ISong } from "./interfaces";
+import { IAlbum, IArtist, IPlaylist, ISong } from './interfaces';
 
 export interface IBackend {
     getAllSongs(): ISong[] | PromiseLike<ISong[]>;

@@ -1,4 +1,4 @@
-import SubsonicAPI, { AlbumWithSongsID3, Child, SubsonicBaseResponse } from 'subsonic-api';
+import SubsonicAPI, { AlbumWithSongsID3, Child } from 'subsonic-api';
 import { IBackend } from './backend';
 import { ISong, IPlaylist, IAlbum, IArtist } from './interfaces';
 
@@ -18,7 +18,7 @@ export class SubSonic implements IBackend {
 
   async getAllSongs(): Promise<ISong[]> {
     const result = await this.api.search3({ query: '*', songCount: 5000, songOffset: 0, albumCount: 0, artistCount: 0 });
-    return result.searchResult3?.song!.map((song) => this.toSong(song)) ?? [];
+    return result.searchResult3?.song?.map((song) => this.toSong(song)) ?? [];
   }
 
   async getPlaylistItems(id: string): Promise<ISong[]> {
@@ -32,7 +32,7 @@ export class SubSonic implements IBackend {
       return {
         id: x.id,
         title: x.name,
-        thumbnailUrl: this.makeUrl("getCoverArt.view", { id: x.id, size: "200" }),
+        thumbnailUrl: this.makeUrl('getCoverArt.view', { id: x.id, size: '200' }),
       }
     }) ?? [];
   }
@@ -58,7 +58,7 @@ export class SubSonic implements IBackend {
       title: album.name,
       artist: album.artist ?? '',
       artistId: album.artistId ?? '',
-      thumbnailUrl: this.makeUrl("getCoverArt.view", { id: album.id, size: "200" }),
+      thumbnailUrl: this.makeUrl('getCoverArt.view', { id: album.id, size: '200' }),
       artistUrl: '',
       albumUrl: ''
     };
@@ -76,7 +76,7 @@ export class SubSonic implements IBackend {
     return {
       id: artist.id,
       name: artist.name,
-      thumbnailUrl: this.makeUrl("getCoverArt.view", { id: artist.id, size: "200" }),
+      thumbnailUrl: this.makeUrl('getCoverArt.view', { id: artist.id, size: '200' }),
       logoUrl: '',
       artistUrl: ''
     }
@@ -89,20 +89,20 @@ export class SubSonic implements IBackend {
 
   makeUrl(method: string, params?: Record<string, unknown>) {
     let base = this.api.baseURL();
-    if (!base.endsWith("rest/")) base += "rest/";
+    if (!base.endsWith('rest/')) base += 'rest/';
     base += method;
 
     const url = new URL(base);
-    url.searchParams.set("v", "1.16.1");
-    url.searchParams.set("c", "subsonic-api");
-    url.searchParams.set("f", "json");
-    url.searchParams.set("u", this.session.username);
-    url.searchParams.set("t", this.session.subsonicToken);
-    url.searchParams.set("s", this.session.subsonicSalt);
+    url.searchParams.set('v', '1.16.1');
+    url.searchParams.set('c', 'subsonic-api');
+    url.searchParams.set('f', 'json');
+    url.searchParams.set('u', this.session.username);
+    url.searchParams.set('t', this.session.subsonicToken);
+    url.searchParams.set('s', this.session.subsonicSalt);
 
     if (params) {
       for (const [key, value] of Object.entries(params)) {
-        if (typeof value === "undefined" || value === null) continue;
+        if (typeof value === 'undefined' || value === null) continue;
         if (Array.isArray(value)) {
           for (const v of value) {
             url.searchParams.append(key, v.toString());
@@ -140,8 +140,8 @@ export class SubSonic implements IBackend {
       albumId: song.albumId,
       artist: song.artist ?? '',
       artistId: song.artistId ?? '',
-      url: this.makeUrl("stream.view", { id: song.id, format: "raw" }),
-      thumbnailUrl: this.makeUrl("getCoverArt.view", { id: song.id, size: "200" }),
+      url: this.makeUrl('stream.view', { id: song.id, format: 'raw' }),
+      thumbnailUrl: this.makeUrl('getCoverArt.view', { id: song.id, size: '200' }),
       isFavorite: song.userRating === 5,
       isLiked: false,
       rating: song.userRating ?? 0,

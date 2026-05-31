@@ -38,14 +38,12 @@
 </template>
 
 <script setup lang="ts">
-import { JellyfinAPI, JellyfinConnection } from 'src/models/jellyfin';
 import { IUser } from 'src/models/jellyitem';
 import { useAuthStore } from 'src/stores/authStore';
 import { ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import LoadSpinner from 'src/components/LoadSpinner.vue';
 import { Backend } from 'src/models/backend';
-import { SubsonicAPI } from "subsonic-api";
 import { SubSonic } from 'src/models/subsonic';
 
 const router = useRouter();
