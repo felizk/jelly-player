@@ -22,7 +22,9 @@ const bookPlayer = injectBookPlayer();
 const router = useRouter();
 
 const topRatedSongs = computed(() =>
-  songLibrary.songs.filter((s: ISong) => s.rating === 5)
+  songLibrary.songs
+    .filter((s: ISong) => s.rating === 5)
+    .sort((a: ISong, b: ISong) => b.playCount - a.playCount)
 );
 
 async function play(song: ISong) {

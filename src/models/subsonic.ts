@@ -145,6 +145,7 @@ export class SubSonic implements IBackend {
       isFavorite: song.userRating === 5,
       isLiked: false,
       rating: song.userRating ?? 0,
+      playCount: song.playCount ?? 0,
     }
   }
 }
