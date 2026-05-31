@@ -7,6 +7,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `quasar dev` — start dev server (requires `@quasar/cli` installed globally)
 - `quasar build` — production build (SPA mode)
 - `quasar build -m pwa` — PWA build (used by Docker)
+- `npm test` — run tests once (Vitest)
+- `npm run test:watch` — run tests in watch mode
 - `npm run lint` — ESLint on .js, .ts, .vue files
 - `npm run format` — Prettier formatting on .js, .ts, .vue, .scss, .html, .md, .json
 
