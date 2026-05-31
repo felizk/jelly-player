@@ -19,6 +19,10 @@ const routes: RouteRecordRaw[] = [
         path: 'Playlists',
         component: () => import('pages/PlaylistsPage.vue'),
       },
+      {
+        path: 'TopRated',
+        component: () => import('pages/TopRatedPage.vue'),
+      },
     ],
   },
   {

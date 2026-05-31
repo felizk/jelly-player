@@ -8,6 +8,9 @@
               <q-item clickable v-close-popup to="playlists">
                 <q-item-section>Playlists</q-item-section>
               </q-item>
+              <q-item clickable v-close-popup to="TopRated">
+                <q-item-section>Top Rated</q-item-section>
+              </q-item>
               <q-separator />
               <q-item-label header>Favorite Ratio</q-item-label>
               <q-item>
