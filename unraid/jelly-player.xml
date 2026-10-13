@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <Name>jelly-player</Name>
+  <Repository>ghcr.io/felizk/jelly-player:latest</Repository>
+  <Registry>https://github.com/felizk/jelly-player/pkgs/container/jelly-player</Registry>
+  <Network>bridge</Network>
+  <Privileged>false</Privileged>
+  <Shell>sh</Shell>
+  <Support>https://github.com/felizk/jelly-player/issues</Support>
+  <Project>https://github.com/felizk/jelly-player</Project>
+  <Overview>A music player for Jellyfin. I made this for myself, don't expect any support really.</Overview>
+  <Category>MediaApp:Music</Category>
+  <WebUI>http://[IP]:[PORT:8080]/</WebUI>
+  <Icon>https://raw.githubusercontent.com/felizk/jelly-player/main/unraid/icon.png</Icon>
+  <ExtraParams></ExtraParams>
+  <PostArgs></PostArgs>
+  <Config Name="Web UI" Target="8080" Default="8097" Mode="tcp" Description="HTTP port (UAM may remap it)" Type="Port" Display="always" Required="true" Mask="false">8097</Config>
+</Container>

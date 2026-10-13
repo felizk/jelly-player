@@ -29,3 +29,4 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 - Trunk-based: commits go directly to `main`
 - Docker image is built automatically by GitHub Actions on push to `main` and on version tags (`v*.*.*`); it builds in PWA mode and serves via nginx with hash routing
+- The app is installed and updated on Unraid by Unraid App Manager — follow `UAM.md` for anything touching `unraid/`, the Dockerfile or the publish workflow
