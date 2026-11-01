@@ -12,7 +12,7 @@ https://github.com/felizk/unraidappmanager/blob/main/docs/app-repo-guide.md
 
 ## Always
 
-- Keep `<Repository>` on a moving tag (`ghcr.io/felizk/jelly-player:latest`).
+- Keep `<Repository>` on a moving tag (`forgejo.felizk.net/felizk/jelly-player:latest`).
 - Declare every listening port as a `Port` config, and point `<WebUI>` at the HTTP port
   with `[PORT:N]`.
 - Store persistent data only under declared `Path` configs
